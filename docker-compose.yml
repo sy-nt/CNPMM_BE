@@ -1,0 +1,12 @@
+services:
+  application:
+    container_name: application
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=PROD

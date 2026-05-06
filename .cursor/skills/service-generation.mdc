@@ -1,0 +1,16 @@
+---
+description: Generate or modify service classes in this backend.
+---
+
+# Service Generation Skill
+
+Use this when adding or changing business logic in `src/api/<module>`.
+
+1. Read the module's router, controller, DTO, schema, constants, and service before editing.
+2. Extend `BaseService` for new services so repositories, Redis, and logger access match existing code.
+3. Keep controllers thin; put business rules, repository access, Redis, hashing, JWT, and integration logic in services.
+4. Use existing repositories through `this.repositories`; add repository classes only when a new entity needs one.
+5. Use existing HTTP errors and module error constants for failure cases.
+6. Wrap persisted writes in `AppDataSource.transaction` and pass `manager` to repository write methods.
+7. Keep external side effects, such as email sending, outside database transactions.
+8. Verify touched files with TypeScript and linter diagnostics when practical.

@@ -1,0 +1,16 @@
+---
+description: Apply database transaction patterns with TypeORM.
+---
+
+# Database Transaction Skill
+
+Use this when adding or changing database writes.
+
+1. Read the target service and repository methods before editing.
+2. Use `AppDataSource.transaction(async (manager) => { ... })` for create, update, delete, and multi-step persisted writes.
+3. Pass the transaction `manager` into repository write methods such as `create`, `createMany`, `update`, `delete`, and `softDelete`.
+4. Keep reads outside transactions unless they must be consistent with writes in the same operation.
+5. Do not send email, call external APIs, publish events, or perform long-running work inside the transaction callback.
+6. Use `removeNil` when applying partial update DTOs if optional fields should not overwrite existing data.
+7. Keep entity changes in `src/domain/entities` and schema changes in TypeORM migrations.
+8. Verify type safety after transaction changes with `tsc --noEmit` when practical.

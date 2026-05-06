@@ -1,0 +1,17 @@
+---
+description: Guidance for event handlers if event-driven code is introduced.
+---
+
+# Event Handler Skill
+
+No event bus, Kafka, RabbitMQ, saga, or outbox implementation is currently present.
+
+Use this only if a task explicitly introduces event-driven behavior.
+
+1. Confirm the chosen transport and existing project convention before implementing.
+2. Make handlers idempotent with a stable event ID or business key.
+3. Persist state changes before publishing follow-up events.
+4. Add retry and backoff behavior appropriate to the transport.
+5. Avoid publishing events from inside database transactions unless an outbox pattern is implemented.
+6. Log handler failures with enough context to trace the event and affected aggregate.
+7. Add focused tests around duplicate delivery and retry behavior when handlers are added.

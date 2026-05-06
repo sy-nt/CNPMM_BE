@@ -1,0 +1,17 @@
+---
+description: Architecture boundaries for the backend.
+alwaysApply: true
+---
+
+# Architecture Rules
+
+- Keep API modules under `src/api/<module>` with router, controller, service, DTO, schema, and constants files when applicable.
+- Routers compose middleware only: validation, authentication, authorization, rate limiting, and `asyncWrapper(controller.method)`.
+- Controllers should stay thin: extract input/context, call one service method, and rely on response decorators.
+- Services own business rules, repository access, Redis cache access, password hashing, JWT operations, and external integrations.
+- Repositories wrap TypeORM access. Prefer existing `BaseRepository` methods before using raw query builders.
+- All writes that create, update, or delete persisted data should use `AppDataSource.transaction` and pass the transaction manager to repository write methods.
+- Do not perform external API calls, email sending, or network calls inside database transactions.
+- Domain entities live in `src/domain/entities`; repositories live in `src/domain/repositories`; database clients and migrations live in `src/domain/db` and `src/domain/migrations`.
+- No Kafka, RabbitMQ, saga, or outbox pattern is currently detected. Do not add event-driven patterns unless a concrete feature requires them.
+- If event publishing is introduced later, persist state changes before publishing and add idempotency/retry rules at that time.

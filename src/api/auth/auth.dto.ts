@@ -1,0 +1,35 @@
+export type ActivateAccountRequestDto = {
+    email: string;
+    otp: number;
+};
+
+export type LoginRequestDto = {
+    email: string;
+    password: string;
+};
+
+export type LoginResponseDto = {
+    accessToken: string;
+    refreshToken: string;
+};
+
+export type LogoutRequestDto = {
+    refreshToken: string;
+};
+
+export type RefreshTokenRequestDto = {
+    refreshToken: string;
+};
+
+export type RefreshTokenResponseDto = {
+    accessToken: string;
+    refreshToken: string;
+};
+
+export type SignUpRequestDto = {
+    email: string;
+    firstName?: string;
+    imageUrl?: string;
+    lastName?: string;
+    password: string;
+};

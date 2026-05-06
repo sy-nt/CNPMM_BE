@@ -1,0 +1,18 @@
+---
+description: Project-specific guidance for this Express TypeScript backend.
+alwaysApply: true
+---
+
+# Project Guidance
+
+- This project is an Express TypeScript API organized into `src/api`, `src/domain`, `src/shared`, and `src/config`.
+- Use the existing route -> controller -> service -> repository flow for API work.
+- Validate request `body`, `query`, and `params` with Joi schemas through `validator`.
+- Extract typed request data with `extractRequest` and request identity with `extractContext`.
+- Return controller responses through existing response decorators such as `@OkResponse()` and `@CreatedResponse()`.
+- Put business logic in services extending `BaseService`; use shared repositories through `this.repositories`.
+- Use TypeORM entities and repositories under `src/domain`; keep database schema changes in migrations.
+- Use Redis through the existing `appRedis` or `BaseService.redis` helpers.
+- Reuse existing shared middleware, decorators, HTTP errors, logger, JWT, nodemailer, rate limit, and utility modules before adding new abstractions.
+- Do not start dev servers or build the app without explicit approval. Prefer targeted TypeScript, lint, or test checks.
+- Do not introduce new frameworks or external dependencies unless the project lacks a suitable existing library and the need is verified.

@@ -1,0 +1,19 @@
+{
+  "project": {
+    "architecture": "Express TypeScript modular backend",
+    "database": "TypeORM with MySQL",
+    "observability": ["Winston", "OpenTelemetry"],
+    "primaryDirectories": ["src/api", "src/domain", "src/shared", "src/config"],
+    "validation": "Joi"
+  },
+  "rules": {
+    "architecture": ".cursor/rules/architecture.mdc",
+    "style": ".cursor/rules/style.mdc"
+  },
+  "skills": {
+    "apiEndpoint": ".cursor/skills/api-endpoint.mdc",
+    "databaseTransaction": ".cursor/skills/db-transaction.mdc",
+    "eventHandler": ".cursor/skills/event-handler.mdc",
+    "serviceGeneration": ".cursor/skills/service-generation.mdc"
+  }
+}

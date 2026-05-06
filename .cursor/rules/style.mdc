@@ -1,0 +1,17 @@
+---
+description: Style and implementation conventions for this TypeScript codebase.
+alwaysApply: true
+---
+
+# Style Rules
+
+- Follow the existing TypeScript style: strict types, path aliases (`@api`, `@config`, `@domain`, `@shared`), and named DTO types.
+- Keep imports compatible with ESLint alphabetical ordering and project aliases.
+- Use Joi schemas for inbound validation and DTO types for service/controller contracts.
+- Use project HTTP error classes (`BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `HttpError`) instead of returning raw status responses from services.
+- Keep functions short enough for the configured `max-lines-per-function` rule unless the file already has a justified exception.
+- Do not use `console` in application code. Use the Winston logger from `Base`/`appLogger`.
+- Prefer existing utilities such as `removeNil`, shared pagination types, and shared schema helpers.
+- Keep comments rare and only for non-obvious behavior or business rules.
+- Preserve existing response shape through `HttpResponse` classes and response decorators.
+- After edits, check TypeScript and linter diagnostics for touched files where practical.

@@ -1,0 +1,17 @@
+---
+description: Add or modify Express API endpoints.
+---
+
+# API Endpoint Skill
+
+Use this when adding routes under `src/api`.
+
+1. Follow the module shape: `*.router.ts`, `*.controller.ts`, `*.service.ts`, `*.dto.ts`, `*.schema.ts`, and `*.constants.ts` when needed.
+2. Define Joi schemas for inbound `body`, `query`, and `params`; wire them through `validator` in the router.
+3. Add authentication with `authenticator` and authorization with `authorizer` where the endpoint requires identity or roles.
+4. Add route-level rate limits through the shared rate limit middleware when requested.
+5. Wrap controller methods with `asyncWrapper` in routers.
+6. In controllers, use `extractRequest` for request data and `extractContext` for authenticated user data.
+7. Return through `@OkResponse()` or `@CreatedResponse()` decorators instead of manually writing Express responses.
+8. Put business behavior in the service and keep the controller orchestration-only.
+9. Verify the endpoint with focused type checks, linter diagnostics, or tests when available.
