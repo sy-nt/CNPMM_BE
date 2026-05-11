@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "f2d5d900-3e6c-4a76-9f5e-9e7d7a0c7c71",
     "name": "CNPM Backend API",
-    "description": "Postman collection for the implemented health, auth, and user API modules. Note: `src/api/app.router.ts` currently mounts `health_check` and `user` under `/api/v1`; `authRouter` defines auth routes but is not currently mounted in `app.router.ts`.",
+    "description": "Postman collection for the implemented health, auth, and user API modules mounted under `/api/v1`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -30,25 +30,10 @@
     },
     {
       "name": "Auth",
-      "description": "Routes defined by `src/api/auth/auth.router.ts`. Mount `authRouter` in `src/api/app.router.ts` before using these paths through the running API.",
+      "description": "Routes defined by `src/api/auth/auth.router.ts`.",
       "item": [
         {
           "name": "Sign Up",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.data?.accessToken) pm.collectionVariables.set('accessToken', json.data.accessToken);",
-                  "  if (json.data?.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -69,6 +54,33 @@
               "path": [
                 "auth",
                 "sign-up"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Activate Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": {{otp}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/activate-account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "activate-account"
               ]
             }
           },
@@ -193,7 +205,7 @@
       "name": "User",
       "item": [
         {
-          "name": "Get User By ID",
+          "name": "Get Current User",
           "request": {
             "auth": {
               "type": "bearer",
@@ -208,13 +220,12 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/user/{{userId}}",
+              "raw": "{{baseUrl}}/user/",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "user",
-                "{{userId}}"
+                "user"
               ]
             }
           },
@@ -222,7 +233,6 @@
         },
         {
           "name": "Get Users",
-          "description": "The route currently has `authorizer(\"admin\")` but no preceding `authenticator(\"access\")`, so the backend may not populate request context for this handler until the router is adjusted.",
           "request": {
             "auth": {
               "type": "bearer",
@@ -237,12 +247,12 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/user?limit=30&orderBy=createdAt&sort=desc",
+              "raw": "{{baseUrl}}/users?limit=30&orderBy=createdAt&sort=desc",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "user"
+                "users"
               ],
               "query": [
                 {
@@ -289,10 +299,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+              "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"User\",\n  \"imageUrl\": \"https://example.com/avatar-updated.png\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/user",
+              "raw": "{{baseUrl}}/user/",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -319,7 +329,7 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/user",
+              "raw": "{{baseUrl}}/user/",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -347,10 +357,6 @@
       "value": ""
     },
     {
-      "key": "userId",
-      "value": "00000000-0000-0000-0000-000000000000"
-    },
-    {
       "key": "email",
       "value": "test@example.com"
     },
@@ -364,7 +370,7 @@
     },
     {
       "key": "otp",
-      "value": ""
+      "value": "123456"
     }
   ]
 }

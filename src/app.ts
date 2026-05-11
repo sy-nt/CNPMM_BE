@@ -2,12 +2,14 @@ import router from "@api/app.router";
 import { appRateLimit } from "@shared/lib/rateLimit";
 import { handleError, handleNotFound } from "@shared/middlewares/errorHandler";
 import { requestTracker } from "@shared/middlewares/requestTracker";
-import express, { ErrorRequestHandler } from "express";
+import cors from "cors";
 import "@domain/db";
+import express, { ErrorRequestHandler } from "express";
 import morgan from "morgan";
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 app.use(requestTracker);
 

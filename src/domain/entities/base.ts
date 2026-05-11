@@ -37,8 +37,9 @@ export class BaseEntityWithUUID extends BaseEntity {
      * @see https://www.uuidgenerator.net/version7
      */
     @PrimaryColumn({
+        length: 36,
         name: "id",
-        type: "uuid",
+        type: "char",
     })
     id!: string;
 

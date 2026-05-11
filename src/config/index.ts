@@ -6,6 +6,9 @@ import type { Config } from "./type";
 dotenv.config();
 
 const envSchema = joi.object<Config>({
+    app: joi.object({
+        frontendUrl: joi.string().required(),
+    }),
     auth: joi.object({
         jwt: joi.object({
             accessTokenExpiresIn: joi.string().default("1h"),
@@ -42,6 +45,9 @@ const envSchema = joi.object<Config>({
 const initConfig = () => {
     const validated = envSchema.validate(
         {
+            app: {
+                frontendUrl: process.env.FRONTEND_URL,
+            },
             auth: {
                 jwt: {
                     accessTokenExpiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,

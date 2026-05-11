@@ -12,6 +12,9 @@ export interface AuthConfig {
 }
 
 export interface Config {
+    app: {
+        frontendUrl: string;
+    };
     auth: AuthConfig;
     db: {
         mysql: MySqlConfig;

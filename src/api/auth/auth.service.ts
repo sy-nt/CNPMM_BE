@@ -138,12 +138,16 @@ export class AuthService extends BaseService {
         const tokenOTP = randomInt(100000, 1000000);
         await this.redis.setex(
             `${RedisKeyPrefix.OTP_ACTIVATE}:${email}`,
-            60 * 5,
+            60 * 60 * 24,
             tokenOTP.toString(),
+        );
+
+        const base64Token = Buffer.from(`${email}:${tokenOTP}`).toString(
+            "base64",
         );
         appNodeMailer.sendEmail(
             "Wellcome to our app",
-            `Your activation code is ${tokenOTP}. Please use this code to activate your account.`,
+            `Your activation code is ${tokenOTP}. Please use this code to activate your account. Or click the link below to activate your account: ${config.app.frontendUrl}/activate?token=${base64Token}`,
             email,
         );
     };

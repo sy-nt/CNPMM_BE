@@ -2,26 +2,28 @@
 
 This document summarizes the implemented auth and user flows in `src/api/auth` and `src/api/user`.
 
-Routing note: `authRouter` defines auth routes, but `src/api/app.router.ts` currently mounts only `health_check` and `user` under `/api/v1`. The auth route paths below are based on the module router shape and require mounting `authRouter` before they are reachable.
+Routing note: `src/api/app.router.ts` mounts health check, user, and auth routers under `/api/v1`.
 
 ## Auth Use Cases
 
 ### Sign Up
 
-- Defined route: `POST /auth/sign-up`
+- Route: `POST /api/v1/auth/sign-up`
 - Validation: `signUpRequestSchema`
 - Rate limit: route scoped, limit `5`
 - Input: `email`, `password`, optional `firstName`, `lastName`, `imageUrl`
 - Main flow:
   1. Validate request body.
   2. Check whether a user with the email already exists.
-  3. Hash password with bcrypt.
-  4. Create user with default `user` role in a database transaction.
-  5. Generate and store an activation OTP in Redis for 5 minutes.
-  6. Send activation email.
-  7. Return access and refresh tokens.
+  3. Load the default `user` role.
+  4. Hash password with bcrypt.
+  5. Create user with the default `user` role in a database transaction.
+  6. Generate and store an activation OTP in Redis for 5 minutes.
+  7. Send activation email.
+  8. Return `201 Created`.
 - Errors:
   - `User already exists` if email is already registered.
+  - `Role not found` if the default `user` role is missing.
 
 ```plantuml
 @startuml
@@ -36,9 +38,8 @@ participant "AuthService" as Service
 database "MySQL" as DB
 database "Redis" as Redis
 participant "Nodemailer" as Mailer
-participant "JWT" as JWT
 
-Client -> Router: POST /auth/sign-up
+Client -> Router: POST /api/v1/auth/sign-up
 Router -> Validator: validate body
 Validator --> Router: valid DTO
 Router -> RateLimit: consume route limit
@@ -49,13 +50,17 @@ Service -> DB: find user by email
 alt user exists
     Service --> Controller: BadRequestError
 else new user
-    Service -> Service: hash password
-    Service -> DB: transaction create user
-    Service -> Redis: set activation OTP (5 minutes)
-    Service -> Mailer: send activation email
-    Service -> JWT: generate access and refresh tokens
-    Service --> Controller: tokens
-    Controller --> Client: 201 Created
+    Service -> DB: find default user role
+    alt role missing
+        Service --> Controller: BadRequestError
+    else role found
+        Service -> Service: hash password
+        Service -> DB: transaction create user
+        Service -> Redis: set activation OTP (5 minutes)
+        Service -> Mailer: send activation email
+        Service --> Controller: success
+        Controller --> Client: 201 Created
+    end
 end
 
 @enduml
@@ -63,7 +68,7 @@ end
 
 ### Login
 
-- Defined route: `POST /auth/login`
+- Route: `POST /api/v1/auth/login`
 - Validation: `loginRequestSchema`
 - Rate limit: route scoped, limit `10`
 - Input: `email`, `password`
@@ -94,7 +99,7 @@ database "Redis" as Redis
 participant "bcrypt" as Bcrypt
 participant "JWT" as JWT
 
-Client -> Router: POST /auth/login
+Client -> Router: POST /api/v1/auth/login
 Router -> Validator: validate body
 Validator --> Router: valid DTO
 Router -> RateLimit: consume route limit
@@ -128,14 +133,17 @@ end
 
 ### Activate Account
 
-- Service method: `AuthService.activateAccount`
-- Current route status: service and DTO exist, but no router/controller endpoint is currently wired.
-- Input: `email`, `otp`
+- Route: `POST /api/v1/auth/activate-account`
+- Validation: `activateAccountRequestSchema`
+- Rate limit: route scoped, limit `5`
+- Input: `email`, `otp` as a number
 - Main flow:
-  1. Read activation OTP from Redis by email.
-  2. Compare submitted OTP.
-  3. Update `users.isActive` to `true` in a database transaction.
-  4. Delete the Redis OTP key.
+  1. Validate request body.
+  2. Read activation OTP from Redis by email.
+  3. Compare submitted OTP.
+  4. Update `users.isActive` to `true` in a database transaction.
+  5. Delete the Redis OTP key.
+  6. Return `200 OK`.
 - Errors:
   - `OTP failed` if OTP is missing, expired, or does not match.
 
@@ -144,18 +152,29 @@ end
 title Auth - Activate Account
 
 actor Client
+participant "authRouter" as Router
+participant "validator" as Validator
+participant "rateLimit" as RateLimit
+participant "AuthController" as Controller
 participant "AuthService" as Service
 database "Redis" as Redis
 database "MySQL" as DB
 
-Client -> Service: activateAccount(email, otp)
+Client -> Router: POST /api/v1/auth/activate-account
+Router -> Validator: validate body
+Validator --> Router: valid DTO
+Router -> RateLimit: consume route limit
+RateLimit --> Router: allowed
+Router -> Controller: activateAccount(req)
+Controller -> Service: activateAccount(dto)
 Service -> Redis: get auth:otp:activate:{email}
 alt OTP missing or mismatch
-    Service --> Client: UnauthorizedError
+    Service --> Controller: UnauthorizedError
 else OTP matches
     Service -> DB: transaction update user isActive=true
     Service -> Redis: delete OTP key
-    Service --> Client: success
+    Service --> Controller: success
+    Controller --> Client: 200 OK
 end
 
 @enduml
@@ -163,7 +182,7 @@ end
 
 ### Logout
 
-- Defined route: `POST /auth/logout`
+- Route: `POST /api/v1/auth/logout`
 - Authentication: refresh token
 - Main flow:
   1. Authenticate refresh token.
@@ -181,7 +200,7 @@ participant "AuthController" as Controller
 participant "AuthService" as Service
 database "Redis" as Redis
 
-Client -> Router: POST /auth/logout
+Client -> Router: POST /api/v1/auth/logout
 Router -> Authenticator: verify refresh token
 Authenticator --> Router: requestToken in context
 Router -> Controller: logout()
@@ -195,7 +214,7 @@ Controller --> Client: 200 OK
 
 ### Refresh Token
 
-- Defined route: `POST /auth/refresh-token`
+- Route: `POST /api/v1/auth/refresh-token`
 - Authentication: refresh token
 - Main flow:
   1. Authenticate refresh token.
@@ -213,7 +232,7 @@ participant "AuthController" as Controller
 participant "AuthService" as Service
 participant "JWT" as JWT
 
-Client -> Router: POST /auth/refresh-token
+Client -> Router: POST /api/v1/auth/refresh-token
 Router -> Authenticator: verify refresh token
 Authenticator --> Router: jwtPayload in context
 Router -> Controller: refreshToken()
@@ -227,39 +246,34 @@ Controller --> Client: 200 OK
 
 ## User Use Cases
 
-### Get User By ID
+### Get Current User
 
-- Route: `GET /api/v1/user/:id`
-- Validation: `userIdParamsSchema`
+- Route: `GET /api/v1/user/`
 - Authentication: access token
-- Input: `id` path parameter
 - Main flow:
-  1. Validate `id` as UUID.
-  2. Authenticate access token.
+  1. Authenticate access token.
+  2. Use JWT `userId` as the lookup ID.
   3. Find user by ID.
   4. Return `id` and `email`.
 - Errors:
-  - `User not found` if no user exists with the ID.
+  - `User not found` if the authenticated user no longer exists.
 
 ```plantuml
 @startuml
-title User - Get User By ID
+title User - Get Current User
 
 actor Client
 participant "userRouter" as Router
-participant "validator" as Validator
 participant "authenticator(access)" as Authenticator
 participant "UserController" as Controller
 participant "UserService" as Service
 database "MySQL" as DB
 
-Client -> Router: GET /api/v1/user/:id
-Router -> Validator: validate params
-Validator --> Router: valid id
+Client -> Router: GET /api/v1/user/
 Router -> Authenticator: verify access token
 Authenticator --> Router: jwtPayload in context
-Router -> Controller: getUserById(req)
-Controller -> Service: getUserById(dto)
+Router -> Controller: getUser()
+Controller -> Service: getUserById({ id: jwtPayload.userId })
 Service -> DB: find user by id
 alt user missing
     Service --> Controller: BadRequestError
@@ -273,17 +287,17 @@ end
 
 ### Get Users
 
-- Route: `GET /api/v1/user`
+- Route: `GET /api/v1/users/`
 - Validation: `getUsersRequestSchema`
+- Authentication: access token
 - Authorization: admin role via `authorizer("admin")`
-- Query: `lastId`, `limit`, `orderBy`, `page`, `sort`
+- Query: `lastId`, `limit`, `orderBy` (`email` or `createdAt`), `page`, `sort`
 - Main flow:
   1. Validate query.
-  2. Check admin role.
-  3. Query users with keyset pagination.
-  4. Return `items`, `hasNextPage`, and `lastId`.
-- Implementation note:
-  - The router currently applies `authorizer("admin")` without an access-token authenticator before it.
+  2. Authenticate access token.
+  3. Check admin role.
+  4. Query users with keyset pagination.
+  5. Return `items`, `hasNextPage`, and `lastId`.
 
 ```plantuml
 @startuml
@@ -292,15 +306,18 @@ title User - Get Users
 actor Client
 participant "userRouter" as Router
 participant "validator" as Validator
+participant "authenticator(access)" as Authenticator
 participant "authorizer(admin)" as Authorizer
 participant "UserController" as Controller
 participant "UserService" as Service
 database "Redis" as Redis
 database "MySQL" as DB
 
-Client -> Router: GET /api/v1/user
+Client -> Router: GET /api/v1/users/
 Router -> Validator: validate query
 Validator --> Router: valid query
+Router -> Authenticator: verify access token
+Authenticator --> Router: jwtPayload in context
 Router -> Authorizer: check admin role
 Authorizer -> Redis: get cached user roles
 alt roles cache miss
@@ -322,23 +339,21 @@ end
 
 ### Update Current User
 
-- Route: `PATCH /api/v1/user`
+- Route: `PATCH /api/v1/user/`
 - Validation: `updateUserRequestSchema`
 - Authentication: access token
 - Rate limit: route scoped, limit `5`
-- Body: optional `email`, `password`
+- Body: at least one of optional `firstName`, `lastName`, `imageUrl`, `password`
 - Main flow:
   1. Validate body.
   2. Authenticate access token.
   3. Apply route rate limit by authenticated user and route.
   4. Load current user by JWT `userId`.
-  5. If email changes, check for duplicate email.
-  6. Hash new password if provided.
-  7. Update user in a database transaction.
-  8. Return updated user response.
+  5. Hash new password if provided.
+  6. Update user in a database transaction.
+  7. Return updated user response.
 - Errors:
   - `User not found` if authenticated user no longer exists.
-  - `User already exists` if requested email belongs to another user.
 
 ```plantuml
 @startuml
@@ -354,7 +369,7 @@ participant "UserService" as Service
 participant "bcrypt" as Bcrypt
 database "MySQL" as DB
 
-Client -> Router: PATCH /api/v1/user
+Client -> Router: PATCH /api/v1/user/
 Router -> Validator: validate body
 Validator --> Router: valid body
 Router -> Authenticator: verify access token
@@ -367,12 +382,6 @@ Service -> DB: find current user
 alt user missing
     Service --> Controller: BadRequestError
 else user found
-    alt email changed
-        Service -> DB: find duplicate email
-        alt duplicate belongs to another user
-            Service --> Controller: BadRequestError
-        end
-    end
     alt password provided
         Service -> Bcrypt: hash password
     end
@@ -387,7 +396,7 @@ end
 
 ### Delete Current User
 
-- Route: `DELETE /api/v1/user`
+- Route: `DELETE /api/v1/user/`
 - Authentication: access token
 - Authorization: admin role
 - Main flow:
@@ -414,7 +423,7 @@ participant "UserService" as Service
 database "Redis" as Redis
 database "MySQL" as DB
 
-Client -> Router: DELETE /api/v1/user
+Client -> Router: DELETE /api/v1/user/
 Router -> Authenticator: verify access token
 Authenticator --> Router: jwtPayload in context
 Router -> Authorizer: check admin role
