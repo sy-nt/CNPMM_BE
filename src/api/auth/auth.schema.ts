@@ -18,3 +18,13 @@ export const activateAccountRequestSchema = Joi.object({
     email: email.required(),
     otp: Joi.number().required(),
 });
+
+export const forgotPasswordRequestSchema = Joi.object({
+    email: email.required(),
+});
+
+export const resetPasswordRequestSchema = Joi.object({
+    email: email.required(),
+    otp: Joi.number().required(),
+    password: strongPassword.required(),
+});

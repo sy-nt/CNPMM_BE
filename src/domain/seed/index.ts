@@ -2,7 +2,9 @@ import AppDataSource from "@domain/db/mysql";
 import { RoleEntity } from "@domain/entities/role.entity";
 import { sleep } from "@shared/utils/sleep";
 
+import { seedPermissions } from "./permission";
 import { seedRoles } from "./role";
+import { seedRolePermissions } from "./role-permission";
 
 const isFirstRun = async () => {
     const isInitialized = AppDataSource.isInitialized;
@@ -16,11 +18,13 @@ const isFirstRun = async () => {
 
 const seed = async () => {
     const firstRun = await isFirstRun();
-    if (firstRun) {
-        await AppDataSource.transaction(async (manager) => {
-            await seedRoles(manager);
-        });
-    }
+    if (!firstRun) return;
+
+    await AppDataSource.transaction(async (manager) => {
+        const roles = await seedRoles(manager);
+        const permissions = await seedPermissions(manager);
+        await seedRolePermissions(manager, roles, permissions);
+    });
 };
 
 seed();

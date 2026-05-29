@@ -7,47 +7,72 @@ import { Router } from "express";
 import authController from "./auth.controller";
 import {
     activateAccountRequestSchema,
+    forgotPasswordRequestSchema,
     loginRequestSchema,
+    resetPasswordRequestSchema,
     signUpRequestSchema,
 } from "./auth.schema";
 
-export default function setUpAuthRouter(router: Router) {
-    const PREFIX = "/auth";
+const authRouter = Router();
 
-    router.post(
-        `${PREFIX}/login`,
-        validator({
-            body: loginRequestSchema,
-        }),
-        rateLimit({ limit: 10, scope: "route", windowSeconds: 60 }),
-        asyncWrapper(authController.login),
-    );
-    router.post(
-        `${PREFIX}/sign-up`,
-        validator({
-            body: signUpRequestSchema,
-        }),
-        rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
-        asyncWrapper(authController.signUp),
-    );
+authRouter.post(
+    "/login",
+    validator({
+        body: loginRequestSchema,
+    }),
+    rateLimit({ limit: 10, scope: "route", windowSeconds: 60 }),
+    asyncWrapper(authController.login),
+);
+authRouter.post(
+    "/sign-up",
+    validator({
+        body: signUpRequestSchema,
+    }),
+    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    asyncWrapper(authController.signUp),
+);
 
-    router.post(
-        `${PREFIX}/logout`,
-        authenticator("refresh"),
-        asyncWrapper(authController.logout),
-    );
-    router.post(
-        `${PREFIX}/refresh-token`,
-        authenticator("refresh"),
-        asyncWrapper(authController.refreshToken),
-    );
+authRouter.post(
+    "/logout",
+    authenticator("refresh"),
+    asyncWrapper(authController.logout),
+);
+authRouter.post(
+    "/refresh-token",
+    authenticator("refresh"),
+    asyncWrapper(authController.refreshToken),
+);
 
-    router.post(
-        `${PREFIX}/activate-account`,
-        validator({
-            body: activateAccountRequestSchema,
-        }),
-        rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
-        asyncWrapper(authController.activateAccount),
-    );
-}
+authRouter.post(
+    "/activate-account",
+    validator({
+        body: activateAccountRequestSchema,
+    }),
+    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    asyncWrapper(authController.activateAccount),
+);
+authRouter.post(
+    "/forgot-password",
+    validator({
+        body: forgotPasswordRequestSchema,
+    }),
+    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    asyncWrapper(authController.forgotPassword),
+);
+
+authRouter.post(
+    "/reset-password",
+    validator({
+        body: resetPasswordRequestSchema,
+    }),
+    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    asyncWrapper(authController.resetPassword),
+);
+
+authRouter.get(
+    "/status",
+    authenticator("access"),
+    asyncWrapper(authController.status),
+);
+
+export default authRouter;

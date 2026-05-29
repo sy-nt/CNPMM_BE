@@ -1,3 +1,5 @@
+import { validate as uuidValidate } from "uuid";
+
 export const upperCaseToCamelCase = (input: string): string => {
     return input
         .toLowerCase() // Convert the entire string to lowercase
@@ -6,4 +8,8 @@ export const upperCaseToCamelCase = (input: string): string => {
 
 export const camelCaseToWords = (input: string): string => {
     return input.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+};
+
+export const isUUIDv7 = (input: string): boolean => {
+    return uuidValidate(input);
 };

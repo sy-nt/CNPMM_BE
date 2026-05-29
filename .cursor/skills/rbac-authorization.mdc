@@ -1,0 +1,62 @@
+---
+description: Add or change RBAC roles, permissions, middleware, and per-request permission resolution.
+---
+
+# RBAC Authorization Skill
+
+Use when touching authz, roles, permissions, or shop access control.
+
+## Source of truth
+
+- `src/shared/lib/rbac/rbac.constants.ts` — `RBAC_PERMISSIONS`, `RBAC_SYSTEM_ROLES`, `RBAC_SYSTEM_ROLES_PERMISSIONS`, `PermissionName`, `RBACSystemRoleName`, `REDIS_KEY_PREFIX.ROLE_PERMISSIONS`. Aggregates per-module `*_PERMISSIONS` maps via `mergePermissionMaps(...)` under an intentional `/* eslint-disable no-restricted-imports */`.
+- Per-module permission maps in `src/api/<module>/<module>.constants.ts`, built with `buildModulePermissionsMap(MODULES, ACTIONS)` from `@shared/utils/role`. Resulting shape: `{ MODULE_ACTION: "module:action" }`.
+- `src/shared/lib/rbac/rbac.service.ts` — `getPermissions(roleId)` and `getGuestPermissions()`. Both cache lookups in Redis (`role_permissions:<roleId>` or `role_permissions:guest`) and fall back to the DB join `roles ↔ permissions`.
+- `src/shared/middlewares/rbac.ts` — `rbac(requirePermissions: PermissionName[])`. Reads the JWT payload from `RequestContextService`, fetches that role's permissions, and 403s if any required permission is missing.
+- `src/shared/middlewares/authenticator.ts` — verifies JWT and seeds `jwtPayload` + `tokens` on the context; runs before `rbac`.
+
+## Permission naming
+
+- Format: `<module>:<action>`, e.g. `image:create-presigned-url`, `address:read`, `user:update`, `shop:register`.
+- All module maps must be merged in `RBAC_PERMISSIONS`; otherwise `PermissionName` won't include the new key.
+
+## Router pattern
+
+```typescript
+rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+authenticator("access"),
+validator({ body: someSchema }),         // when input exists
+rbac([PERMISSIONS.MODULE_ACTION]),       // ALWAYS pass an array
+asyncWrapper(controller.method),
+```
+
+- `rbac` takes a `PermissionName[]` — every listed permission must be present (AND, not OR).
+- For optional-auth flows, use `authenticator("access-optional")` and let `rbac` fall back to guest permissions when no JWT is present.
+
+## JWT and login
+
+- JWT payload: `{ userId, roleId, assignedShopId? }` — plain values, no encryption.
+- `auth.service.login` builds the payload directly from the user record and calls `appJwt.generateTokens(payload)`. Refresh works the same way using the existing payload.
+- There is no "encrypt role" / "decrypt role" step. Role changes take effect at the next request once the Redis cache for that `roleId` is invalidated.
+
+## Cache invalidation
+
+- Whenever a role's permission set changes (create/update/delete in `RoleService`), call `this.redis.del(\`${REDIS_KEY_PREFIX.ROLE_PERMISSIONS}:${roleId}\`)`.
+- Guest permissions are cached under `role_permissions:guest` — invalidate that key when the `guest` role's permissions change.
+
+## Seeds and DB
+
+- Role rows in `src/domain/seed/role.ts`; permission rows in `src/domain/seed/permission.ts`; role↔permission edges in `src/domain/seed/role-permission.ts`. Run automatically on first boot when the `roles` table is empty (`src/domain/seed/index.ts`).
+- Seeds run outside any HTTP request and therefore use `AppDataSource.transaction(...)` explicitly.
+
+## Shop constraints
+
+- `shops.owner_id` is unique — one owner per shop.
+- `shop_owner` is granted only via `registerShop`; member assignments use `shop_moderator` / `shop_staff` (system role names in `RBAC_SYSTEM_ROLES`).
+- For shop-scoped writes (assign worker, update shop, manage shop addresses) the `shopId` **must** be `jwtPayload.assignedShopId`, never a body field. Admin-only endpoints that operate on arbitrary shops (e.g. `PATCH /shop/status`) may accept `id` in the body, but the permission must not be present on `shop_owner` / `shop_moderator` / `shop_staff` in `RBAC_SYSTEM_ROLES_PERMISSIONS`.
+
+## Do not
+
+- Reintroduce AES-encrypted JWT roles, `encryptedRole`, `encryptRole`, `decryptRole`, `user_role_assignments`, or `DEFAULT_SHOP_ID` — these were removed.
+- Import API services from `rbac.service` or from other shared services.
+- Check permissions only inside controllers/services — enforce via the `rbac` middleware on the route definition.
+- Pass a single permission string to `rbac(...)`; always pass an array.

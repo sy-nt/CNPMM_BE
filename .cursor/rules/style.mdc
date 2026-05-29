@@ -5,13 +5,50 @@ alwaysApply: true
 
 # Style Rules
 
-- Follow the existing TypeScript style: strict types, path aliases (`@api`, `@config`, `@domain`, `@shared`), and named DTO types.
-- Keep imports compatible with ESLint alphabetical ordering and project aliases.
-- Use Joi schemas for inbound validation and DTO types for service/controller contracts.
-- Use project HTTP error classes (`BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `HttpError`) instead of returning raw status responses from services.
-- Keep functions short enough for the configured `max-lines-per-function` rule unless the file already has a justified exception.
-- Do not use `console` in application code. Use the Winston logger from `Base`/`appLogger`.
-- Prefer existing utilities such as `removeNil`, shared pagination types, and shared schema helpers.
-- Keep comments rare and only for non-obvious behavior or business rules.
-- Preserve existing response shape through `HttpResponse` classes and response decorators.
-- After edits, check TypeScript and linter diagnostics for touched files where practical.
+## TypeScript and imports
+
+- Strict types; path aliases `@api`, `@config`, `@domain`, `@shared`.
+- `eslint-plugin-perfectionist` with `recommended-alphabetical`: imports, class members, object keys, and similar groups must be sorted alphabetically. Run ESLint after edits.
+- Cross-module import boundaries enforced by `no-restricted-imports` in `eslint.config.mjs`. The only file allowed to import API constants from shared code is `src/shared/lib/rbac/rbac.constants.ts` (escape hatch documented inline).
+
+## Validation and contracts
+
+- Joi schemas in `*.schema.ts`; wire them through `validator({ body|query|params })` in routers (validator runs *after* `authenticator` and *before* `rbac` in the canonical chain).
+- **Validate as much as possible in the schema, not in the service.** Schemas own shape, type, format, range, enum membership, array uniqueness, and conditional rules (use `Joi.when({ switch: [...] })` for per-discriminator rules — see `image.schema.createPresignedUrlRequestSchema`). Services only validate what requires a DB/Redis/JWT lookup (existence, uniqueness, ownership, transitions, attempt counters).
+- DTO types in `*.dto.ts` as `interface` / `type`; use them in controllers and services. DTOs may carry fields that the schema does not (e.g. `userId`, `shopId`) — the controller injects them from JWT.
+- Reuse shared Joi helpers from `src/shared/schema.ts` (`email`, `uuid`, `strongPassword`, `page`, `limit`, `sort`, `positiveNumber`, ...). Always prefer `uuid` over plain `Joi.string()` for id fields.
+- **Never** declare `userId`, `shopId`, or `ownerId` in a request schema (see JWT-scoped identity rule in `architecture.mdc`).
+
+## Errors and responses
+
+- Throw `BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, ... from `@shared/lib/http/httpError` — never `res.status(...).json(...)` directly.
+- Module-specific error messages belong in `<module>.constants.ts` enums (`AuthError`, `ShopError`, `AddressError`, `UserError`, `ImageError`, ...).
+- Controllers use `@OkResponse()` / `@CreatedResponse()` decorators; preserve the `HttpResponse` envelope.
+
+## Constants (required)
+
+- No inline magic numbers, TTLs, Redis flags, role/permission strings, bcrypt rounds, or regex patterns in services or routers.
+- Module-specific → `<module>.constants.ts`.
+- Shared security/password → `src/shared/constants/security.constants.ts` (`BCRYPT_SALT_ROUNDS`) + `src/shared/utils/password.ts` (`hashPassword`, `verifyPassword`).
+- Global Redis flags/keys → `src/shared/constants/index.ts` (`REDIS_TRUTHY_VALUE`, `REDIS_FALSY_VALUE`, `GLOBAL_REDIS_KEY_PREFIX`).
+- Roles/permissions → `src/shared/lib/rbac/rbac.constants.ts` (`RBAC_PERMISSIONS`, `RBAC_SYSTEM_ROLES`, `RBAC_SYSTEM_ROLES_PERMISSIONS`, `PermissionName`, `RBACSystemRoleName`, `REDIS_KEY_PREFIX.ROLE_PERMISSIONS`). Per-module permission maps are built in the module via `buildModulePermissionsMap(MODULES, ACTIONS)`.
+
+## Repositories
+
+- `class XRepository extends BaseRepository<XEntity> {}` + `const xRepository = new XRepository(XEntity);` (constructor takes the entity target — no override needed unless adding state).
+- Register the singleton in `src/domain/repositories/index.ts`. Access from services via `this.repositories.<name>`.
+- Add query-builder helpers as methods on the repository class when a query is repeated or needs joins.
+
+## Services
+
+- Extend `BaseService` to inherit `this.repositories`, `this.redis`, `this.config`, `this.queryBuilder`, and `this.logger`.
+- Export a singleton: `const xService = new XService(); export default xService;`.
+- Methods may be declared as `async` methods or arrow properties — match the existing file. New modules: prefer `async` methods for consistency with `RoleService`, `AddressService`, `ShopService`, `ImageService`.
+
+## Code quality
+
+- `max-lines-per-function`: 45 (skip blanks/comments). Extract private helpers (e.g. `private async _foo()` underscore prefix) when needed.
+- No `console.*` — use `this.logger` (in `Base` subclasses) or `appLogger`.
+- Prefer `removeNil` (`@shared/utils/object`) for partial updates.
+- Comments only for non-obvious business rules. No narration comments.
+- After edits: `npx tsc --noEmit` and `npx eslint <files>` on touched files. Do not run dev servers or builds unless asked.

@@ -1,15 +1,29 @@
-import express from "express";
+import { Router } from "express";
 
-import setUpAuthRouter from "./auth/auth.router";
-import setUpHealthCheckRouter from "./healthCheck/healthCheck.router";
-import setUpUserRouter from "./user/user.router";
+import addressRouter from "./address/address.router";
+import addressesRouter from "./address/addresses.router";
+import authRouter from "./auth/auth.router";
+import healthCheckRouter from "./healthCheck/healthCheck.router";
+import imageRouter from "./image/image.router";
+import roleRouter from "./role/role.router";
+import rolesRouter from "./role/roles.router";
+import shopRouter from "./shop/shop.router";
+import shopsRouter from "./shop/shops.router";
+import userRouter from "./user/user.router";
+import usersRouter from "./user/users.router";
 
-const routerV1 = express.Router();
-setUpHealthCheckRouter(routerV1);
-setUpUserRouter(routerV1);
-setUpAuthRouter(routerV1);
+const router = Router();
 
-const router = express.Router();
-router.use("/v1", routerV1);
+router.use("/health-check", healthCheckRouter);
+router.use("/auth", authRouter);
+router.use("/user", userRouter);
+router.use("/users", usersRouter);
+router.use("/address", addressRouter);
+router.use("/addresses", addressesRouter);
+router.use("/image", imageRouter);
+router.use("/role", roleRouter);
+router.use("/roles", rolesRouter);
+router.use("/shop", shopRouter);
+router.use("/shops", shopsRouter);
 
 export default router;

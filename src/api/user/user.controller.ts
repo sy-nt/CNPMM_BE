@@ -1,30 +1,31 @@
 import { OkResponse } from "@shared/decorators/response";
 import { extractRequest } from "@shared/helper/request";
-import { extractContext } from "@shared/lib/context";
+import { RequestContextService } from "@shared/lib/context";
 import { Request } from "express";
 
 import {
-    DeleteUserRequestDto,
+    BlockUserRequestDto,
     GetUsersRequestDto,
-    UpdateUserParamsDto,
     UpdateUserRequestDto,
 } from "./user.dto";
 import userService from "./user.service";
 
 export class UserController {
     @OkResponse()
-    async deleteUser() {
-        const { jwtPayload } = extractContext();
-        const dto: DeleteUserRequestDto = {
-            id: jwtPayload!.userId,
-        };
+    async blockUser(req: Request) {
+        const body = extractRequest<BlockUserRequestDto>(req, "body");
+        return userService.blockUser(body);
+    }
 
-        await userService.deleteUser(dto);
+    @OkResponse()
+    async deleteUser() {
+        const jwtPayload = RequestContextService.getJwtPayload();
+        await userService.deleteUser({ id: jwtPayload!.userId });
     }
 
     @OkResponse()
     async getUser() {
-        const { jwtPayload } = extractContext();
+        const jwtPayload = RequestContextService.getJwtPayload();
         return userService.getUserById({ id: jwtPayload!.userId });
     }
 
@@ -37,11 +38,8 @@ export class UserController {
     @OkResponse()
     async updateUser(req: Request) {
         const body = extractRequest<UpdateUserRequestDto>(req, "body");
-        const { jwtPayload } = extractContext();
-        const params: UpdateUserParamsDto = {
-            id: jwtPayload!.userId,
-        };
-        return userService.updateUser(params, body);
+        const jwtPayload = RequestContextService.getJwtPayload();
+        return userService.updateUser({ id: jwtPayload!.userId }, body);
     }
 }
 

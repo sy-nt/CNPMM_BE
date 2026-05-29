@@ -3,12 +3,22 @@ import type { StringValue } from "ms";
 import config from "@config";
 import jwtLib from "jsonwebtoken";
 
+export enum JwtError {
+    INVALID_TOKEN = "Invalid token",
+    TOKEN_EXPIRED = "Token expired",
+}
+
 export type JwtPayload = {
+    assignedShopId?: string;
+    roleId: string;
     userId: string;
 };
 export type JwtTokenType = "access" | "refresh";
 export type OptionalJwtTokenType = `${JwtTokenType}-optional`;
 export type TokenTypes = JwtTokenType | OptionalJwtTokenType;
+export type VerifyTokenResult =
+    | { payload: JwtPayload; valid: true }
+    | { reason: "expired" | "invalid"; valid: false };
 
 export class Jwt {
     constructor(
@@ -41,17 +51,20 @@ export class Jwt {
         return { accessToken, refreshToken };
     }
 
-    verifyToken(token: string, type: JwtTokenType) {
+    verifyToken(token: string, type: JwtTokenType): VerifyTokenResult {
         try {
-            const result = jwtLib.verify(
+            const payload = jwtLib.verify(
                 token,
                 type === "access"
                     ? this.configs.accessTokenSecretKey
                     : this.configs.refreshTokenSecretKey,
-            );
-            return result as JwtPayload;
-        } catch {
-            return null;
+            ) as JwtPayload;
+            return { payload, valid: true };
+        } catch (error) {
+            if (error instanceof jwtLib.TokenExpiredError) {
+                return { reason: "expired", valid: false };
+            }
+            return { reason: "invalid", valid: false };
         }
     }
 }

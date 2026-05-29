@@ -1,5 +1,9 @@
 import { KeySetPaginationDto, KeySetPaginationResponse } from "@shared/types";
 
+export interface BlockUserRequestDto {
+    email: string;
+}
+
 export interface DeleteUserRequestDto {
     id: string;
 }
@@ -31,5 +35,8 @@ export type UpdateUserResponseDto = UserResponseDto;
 
 export interface UserResponseDto {
     email: string;
+    firstName?: string;
     id: string;
+    imageUrl?: string;
+    lastName?: string;
 }

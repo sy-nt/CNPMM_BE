@@ -1,5 +1,5 @@
 import appRedis from "@domain/db/redis";
-import { extractContext } from "@shared/lib/context";
+import { RequestContextService } from "@shared/lib/context";
 import { NextFunction, Request, Response } from "express";
 
 import { TooManyRequestsError } from "../http/httpError";
@@ -75,7 +75,7 @@ const buildKey = (
     prefix: string,
 ) => {
     const ip = getIp(req);
-    const userId = extractContext().jwtPayload?.userId;
+    const userId = RequestContextService.getJwtPayload()?.userId;
 
     if (scope === "global") {
         return `${prefix}:g:${ip}`;
@@ -87,7 +87,7 @@ const buildKey = (
     }
 
     const actor = userId ?? ip;
-    const route = req.route?.path || req.baseUrl;
+    const route = `${req.method}:${req.baseUrl}${req.route?.path ?? ""}`;
 
     return `${prefix}:r:${actor}:${route}`;
 };

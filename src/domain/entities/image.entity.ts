@@ -1,41 +1,48 @@
-import { Column, Entity } from "typeorm";
+import { Column, Entity, Index, Unique } from "typeorm";
 
 import { BaseEntityWithUUID } from "./base";
 
 @Entity({
     name: "images",
 })
+@Index(["key"])
+@Unique(["key"])
 export class ImageEntity extends BaseEntityWithUUID {
     @Column({
-        length: 255,
-        name: "bucket",
-        type: "varchar",
+        default: false,
+        name: "is_used",
+        type: "boolean",
     })
-    bucket!: string;
+    isUsed!: boolean;
 
     @Column({
-        name: "mime_type",
+        length: 255,
+        nullable: false,
+        type: "varchar",
+        unique: true,
+    })
+    key!: string;
+
+    @Column({
+        length: 255,
+        name: "public_url",
+        nullable: false,
         type: "varchar",
     })
-    mimeType!: string;
+    publicUrl!: string;
 
     @Column({
         name: "size",
-        type: "int",
+        nullable: false,
+        type: "bigint",
     })
     size!: number;
 
     @Column({
         length: 255,
-        name: "storage_key",
+        name: "used_for",
+        nullable: false,
         type: "varchar",
     })
-    storageKey!: string;
-
-    @Column({
-        length: 255,
-        name: "url",
-        type: "varchar",
-    })
-    url!: string;
+    usedFor!: string;
 }

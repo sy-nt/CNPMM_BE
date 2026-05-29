@@ -3,8 +3,8 @@ import { Router } from "express";
 
 import healthCheckController from "./healthCheck.controller";
 
-export default function setUpHealthCheckRouter(router: Router) {
-    const PREFIX = "/health_check";
+const healthCheckRouter = Router();
 
-    router.get(`${PREFIX}/`, asyncWrapper(healthCheckController.get));
-}
+healthCheckRouter.get("/", asyncWrapper(healthCheckController.get));
+
+export default healthCheckRouter;

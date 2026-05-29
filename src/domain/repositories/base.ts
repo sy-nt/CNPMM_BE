@@ -1,5 +1,6 @@
 import AppDataSource from "@domain/db/mysql";
 import { Base } from "@shared/lib/base/base";
+import { RequestContextService } from "@shared/lib/context";
 import {
     DefaultPaginationDto,
     KeySetPaginationDto,
@@ -7,12 +8,12 @@ import {
 } from "@shared/types";
 import {
     DeepPartial,
-    EntityManager,
     EntityTarget,
     FindManyOptions,
     FindOneOptions,
     FindOptionsOrder,
     FindOptionsWhere,
+    LessThan,
     MoreThan,
     ObjectLiteral,
     QueryDeepPartialEntity,
@@ -27,23 +28,20 @@ export class BaseRepository<T extends ObjectLiteral> extends Base {
         this.repository = AppDataSource.getRepository(entity);
     }
 
-    create = async (
-        manager: EntityManager,
-        data: DeepPartial<T>,
-    ): Promise<T> => {
+    create = async (data: DeepPartial<T>): Promise<T> => {
+        const manager = await this._entityManager();
         const entity = this.repository.create(data);
         return manager.save(entity);
     };
 
-    createMany = async (
-        manager: EntityManager,
-        data: DeepPartial<T>[],
-    ): Promise<T[]> => {
+    createMany = async (data: DeepPartial<T>[]): Promise<T[]> => {
+        const manager = await this._entityManager();
         const entities = this.repository.create(data);
         return manager.save(entities);
     };
 
-    delete = async (manager: EntityManager, criteria: FindOptionsWhere<T>) => {
+    delete = async (criteria: FindOptionsWhere<T>) => {
+        const manager = await this._entityManager();
         return manager.delete(this.repository.target, criteria);
     };
 
@@ -74,6 +72,7 @@ export class BaseRepository<T extends ObjectLiteral> extends Base {
             currentPage: paginateOption.page,
             items,
             limit: paginateOption.limit,
+            total,
             totalPage,
         };
     };
@@ -82,18 +81,24 @@ export class BaseRepository<T extends ObjectLiteral> extends Base {
         options: Omit<FindManyOptions<T>, "skip" | "take">,
         paginateOption: KeySetPaginationDto,
     ) => {
+        const isAsc =
+            (paginateOption.sort ?? "DESC").toString().toUpperCase() === "ASC";
+        const cursor = paginateOption.lastId
+            ? {
+                  id: isAsc
+                      ? MoreThan(paginateOption.lastId)
+                      : LessThan(paginateOption.lastId),
+              }
+            : {};
         const [items, total] = await this.repository.findAndCount({
             ...options,
-            order: this._buildOrder(
-                paginateOption.orderBy,
-                paginateOption.sort,
-            ),
+            order: {
+                id: isAsc ? "ASC" : "DESC",
+            } as unknown as FindOptionsOrder<T>,
             take: paginateOption.limit,
             where: {
                 ...options.where,
-                ...(paginateOption.lastId
-                    ? { id: MoreThan(paginateOption.lastId) }
-                    : {}),
+                ...cursor,
             } as FindOptionsWhere<T>,
         });
 
@@ -108,28 +113,41 @@ export class BaseRepository<T extends ObjectLiteral> extends Base {
         return this.repository.createQueryBuilder();
     };
 
-    softDelete = async (
-        manager: EntityManager,
-        criteria: FindOptionsWhere<T>,
-    ) => {
+    softDelete = async (criteria: FindOptionsWhere<T>) => {
+        const manager = await this._entityManager();
         return manager.softDelete(this.repository.target, criteria);
     };
 
     update = async (
-        manager: EntityManager,
         criteria: FindOptionsWhere<T>,
         data: QueryDeepPartialEntity<T>,
     ) => {
+        const manager = await this._entityManager();
         return manager.update(this.repository.target, criteria, data);
     };
 
     private _buildOrder(
         orderBy?: string,
         sort?: SortDirection,
-    ): FindOptionsOrder<T> | undefined {
-        if (!orderBy || !sort) return undefined;
-        return {
-            [orderBy]: sort,
-        } as FindOptionsOrder<T>;
+    ): FindOptionsOrder<T> {
+        if (orderBy && sort) {
+            return { [orderBy]: sort } as FindOptionsOrder<T>;
+        }
+        return { id: "DESC" } as unknown as FindOptionsOrder<T>;
+    }
+
+    private async _entityManager() {
+        const queryRunner = await this._queryRunner();
+        return queryRunner.manager;
+    }
+
+    private async _queryRunner() {
+        const ctx = RequestContextService.getContext();
+        if (ctx.queryRunner) return ctx.queryRunner;
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        RequestContextService.setQueryRunner(queryRunner);
+        return queryRunner;
     }
 }

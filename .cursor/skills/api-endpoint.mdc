@@ -4,14 +4,65 @@ description: Add or modify Express API endpoints.
 
 # API Endpoint Skill
 
-Use this when adding routes under `src/api`.
+Use when adding routes under `src/api/<module>`.
 
-1. Follow the module shape: `*.router.ts`, `*.controller.ts`, `*.service.ts`, `*.dto.ts`, `*.schema.ts`, and `*.constants.ts` when needed.
-2. Define Joi schemas for inbound `body`, `query`, and `params`; wire them through `validator` in the router.
-3. Add authentication with `authenticator` and authorization with `authorizer` where the endpoint requires identity or roles.
-4. Add route-level rate limits through the shared rate limit middleware when requested.
-5. Wrap controller methods with `asyncWrapper` in routers.
-6. In controllers, use `extractRequest` for request data and `extractContext` for authenticated user data.
-7. Return through `@OkResponse()` or `@CreatedResponse()` decorators instead of manually writing Express responses.
-8. Put business behavior in the service and keep the controller orchestration-only.
-9. Verify the endpoint with focused type checks, linter diagnostics, or tests when available.
+## Files
+
+1. `*.router.ts` — routes + middleware only. A module may have two routers (singular and plural collection).
+2. `*.controller.ts` — thin handler with `@OkResponse()` / `@CreatedResponse()`.
+3. `*.service.ts` — business logic, extends `BaseService`.
+4. `*.dto.ts`, `*.schema.ts`, `*.constants.ts` as needed.
+5. Register the router in `src/api/app.router.ts` (otherwise the route is unreachable). All current modules are mounted: `healthCheck`, `auth`, `user`, `users`, `address`, `addresses`, `image`, `role`, `roles`, `shop`, `shops`.
+6. Update `docs/postman/cnpm-be.postman_collection.json` for new/changed public routes.
+
+## Router checklist (canonical order)
+
+For RBAC-gated endpoints, order matters:
+
+```
+rateLimit({ limit, scope: "route", windowSeconds }),
+authenticator("access" | "refresh" | "access-optional" | "refresh-optional"),
+validator({ body|query|params: schema }),   // when input exists
+rbac([PERMISSIONS.X, PERMISSIONS.Y]),        // ALWAYS an array
+asyncWrapper(controller.method),
+```
+
+For public auth endpoints (no auth, no RBAC): `validator → rateLimit → asyncWrapper`.
+
+Rules of thumb:
+
+- `rateLimit` first so excess traffic is dropped before any DB / JWT work.
+- `authenticator` before `validator` so unauthenticated requests do not consume Joi cycles.
+- `validator` before `rbac` so malformed input is rejected even when a permission would otherwise hide it.
+- `rbac` last among gating middleware so the JWT and request shape are known when permissions are checked.
+
+## Controller checklist
+
+1. `extractRequest<Dto>(req, "body" | "query" | "params")` for input.
+2. `RequestContextService.getJwtPayload() / getTokens() / getShopId() / getRequestId()` for context (no `extractContext` helper exists).
+3. **Inject JWT-scoped identity** into the service DTO. Never accept these from the request:
+   - `userId` ← `jwtPayload!.userId`
+   - `shopId` / `ownerId` ← `jwtPayload!.assignedShopId` (controller pattern: `{ ...dto, shopId: jwtPayload!.assignedShopId, userId: jwtPayload!.userId }`)
+   - Exception: admin-only routes targeting an arbitrary record (e.g. `PATCH /shop/status`).
+4. Exactly one service-method call.
+5. Return value (or `void`) — let `@OkResponse()` / `@CreatedResponse()` build the envelope.
+
+## Service checklist
+
+- No cross-API service imports (see `eslint.config.mjs`).
+- No hardcoded strings/numbers; reach for `<module>.constants.ts`, `@shared/constants/*`, and `@shared/lib/rbac/rbac.constants.ts`.
+- **No request-shape validation** in the service — that belongs in the Joi schema. Services only validate business rules that need a DB/Redis/JWT lookup (existence, uniqueness, ownership, transition, attempt counter).
+- Do **not** wrap work in `AppDataSource.transaction(...)` — the per-request transaction set up by `contextMiddleware` already covers repository writes.
+- Reach repositories via `this.repositories.<name>`. Add query-builder helpers on the repository class for repeated lookups.
+- Side effects (email, S3 presign, external HTTP) happen inline; remember they are not auto-rolled-back if the response later fails.
+
+## Permissions
+
+- Add new permission keys to the module's `*.constants.ts` via `buildModulePermissionsMap`.
+- If a new module is introduced, register its permission map inside `mergePermissionMaps(...)` in `src/shared/lib/rbac/rbac.constants.ts` and grant it to the appropriate sets in `RBAC_SYSTEM_ROLES_PERMISSIONS`.
+
+## Verify
+
+- `npx tsc --noEmit`.
+- `npx eslint <touched files>`.
+- Postman entry updated for public-facing changes.

@@ -5,13 +5,92 @@ alwaysApply: true
 
 # Architecture Rules
 
-- Keep API modules under `src/api/<module>` with router, controller, service, DTO, schema, and constants files when applicable.
-- Routers compose middleware only: validation, authentication, authorization, rate limiting, and `asyncWrapper(controller.method)`.
-- Controllers should stay thin: extract input/context, call one service method, and rely on response decorators.
-- Services own business rules, repository access, Redis cache access, password hashing, JWT operations, and external integrations.
-- Repositories wrap TypeORM access. Prefer existing `BaseRepository` methods before using raw query builders.
-- All writes that create, update, or delete persisted data should use `AppDataSource.transaction` and pass the transaction manager to repository write methods.
-- Do not perform external API calls, email sending, or network calls inside database transactions.
-- Domain entities live in `src/domain/entities`; repositories live in `src/domain/repositories`; database clients and migrations live in `src/domain/db` and `src/domain/migrations`.
-- No Kafka, RabbitMQ, saga, or outbox pattern is currently detected. Do not add event-driven patterns unless a concrete feature requires them.
-- If event publishing is introduced later, persist state changes before publishing and add idempotency/retry rules at that time.
+## Module layout
+
+- API modules under `src/api/<module>`: `*.router.ts`, `*.controller.ts`, `*.service.ts`, `*.dto.ts`, `*.schema.ts`, `*.constants.ts` when needed. A module may expose two routers for plural / singular collection split (e.g. `address.router.ts` + `addresses.router.ts`).
+- Domain: entities in `src/domain/entities/*.entity.ts`, repositories in `src/domain/repositories`, DB clients in `src/domain/db`, migrations in `src/domain/migrations`, seeds in `src/domain/seed`.
+- Shared: middleware, RBAC, HTTP/JWT/logger libs in `src/shared/lib/**`, `src/shared/middlewares`, `src/shared/utils`, `src/shared/constants`, shared Joi helpers in `src/shared/schema.ts`.
+
+## Layer responsibilities
+
+- **Routers:** middleware only — `rateLimit`, `authenticator`, `validator`, `rbac`, `asyncWrapper(controller.method)`. Never call services or repositories directly.
+- **Controllers:** thin — `extractRequest<Dto>(req, ...)`, `RequestContextService.get*()` for context, exactly one service call, response decorators. Controllers are the **only** place that injects JWT-derived identity into the service DTO.
+- **Services:** business rules, orchestration, domain repositories, Redis, password hashing (`@shared/utils/password`), external integrations. Services do **not** re-validate request shape/format/range — that already happened in the Joi schema. Services validate only what requires DB/Redis/JWT lookup (existence, uniqueness, ownership, status transitions, attempt counters).
+- **Repositories:** TypeORM access only. Extend `BaseRepository<T>`; add targeted query-builder helpers when needed. Always go through `this.repositories.<name>` from a service — do not instantiate repositories ad hoc.
+
+## JWT-scoped identity (MANDATORY)
+
+- Request bodies/queries/params **must not** carry `userId`, `shopId`, or `ownerId`. The Joi schema must not declare these fields; the controller injects them from `RequestContextService.getJwtPayload()`:
+  - `userId` ← `jwtPayload.userId`
+  - `shopId` / `ownerId` ← `jwtPayload.assignedShopId`
+- Joi's default `Joi.object()` rejects unknown keys, so a client that tries to spoof these fields gets a 400 automatically.
+- **Exception:** admin-only endpoints that intentionally operate on an arbitrary record may accept the target id in the request (e.g. `PATCH /shop/status` accepts `id` because `SHOP_UPDATE_STATUS` is granted only to `admin`). The exception must be justified by RBAC — the target permission must not be present on any role whose owner would be impersonating someone else.
+- Services may still defensively re-check ownership against the database (`_ensureShopOwnership` etc.) to guard against stale JWTs.
+
+## Middleware order
+
+### App-level (`src/app.ts`)
+
+1. `cors`
+2. `express.json`
+3. `contextMiddleware` — creates async-local `RequestContext` and opens a per-request `QueryRunner` + `startTransaction`.
+4. `transactionMiddleware` — registers `res.on('finish'|'close'|'error')` to commit (2xx) or rollback (non-2xx) and release the runner.
+5. `requestTracker`
+6. `appRateLimit`
+7. `morgan`
+8. `/api/v1` router
+9. `handleNotFound`
+10. `handleError`
+
+### Per-route (canonical for RBAC-gated endpoints)
+
+```
+rateLimit({ ... }),
+authenticator("access" | "refresh" | "access-optional" | "refresh-optional"),
+validator({ body|query|params: schema }),   // when input exists
+rbac([PERMISSIONS.X, PERMISSIONS.Y]),       // when permission-gated; ALWAYS an array
+asyncWrapper(controller.method),
+```
+
+For public auth endpoints (no auth, no RBAC) the order is `validator → rateLimit → asyncWrapper`.
+
+## Service boundaries
+
+- **Never** import another API module's service (`@api/<other>/...service`). Enforced per-module in `eslint.config.mjs`.
+- **Allowed:** repositories via `this.repositories`, `@shared/lib/rbac/rbac.service`, shared utils, shared constants.
+- **Never** import `src/api/**` from `src/shared/**`. The sole intentional escape is `src/shared/lib/rbac/rbac.constants.ts` which aggregates per-module `*_PERMISSIONS` maps under an eslint-disable comment.
+
+## Transactions and side effects
+
+- Every HTTP request runs inside a transaction opened by `contextMiddleware` and committed/rolled-back by `transactionMiddleware`. `BaseRepository.create / createMany / update / delete / softDelete` pick up the contextual `QueryRunner` automatically.
+- **Do not** wrap request work in `AppDataSource.transaction(...)` — it bypasses the per-request runner and breaks rollback-on-error semantics.
+- `AppDataSource.transaction(...)` is only used outside the HTTP lifecycle (e.g. `src/domain/seed/index.ts`).
+- Side effects (email, S3 presigned URL, external HTTP) are not auto-rolled-back; place them where their failure does not violate invariants, and prefer idempotent retries.
+
+## RBAC
+
+- Single source for permission names and system role lists: `src/shared/lib/rbac/rbac.constants.ts`.
+- Per-module permission constants live in the module's own `*.constants.ts` and are built with `buildModulePermissionsMap(MODULES, ACTIONS)` (yields `{ MODULE_ACTION: "module:action" }`). The aggregate `RBAC_PERMISSIONS` is built via `mergePermissionMaps(...)`.
+- System roles in `RBAC_SYSTEM_ROLES`: `admin`, `guest`, `moderator`, `shop_moderator`, `shop_owner`, `shop_staff`, `user`. Default per-role permission sets in `RBAC_SYSTEM_ROLES_PERMISSIONS`.
+- JWT payload: `{ userId, roleId, assignedShopId? }`. There is **no** AES-encrypted role. Login (`auth.service.login`) calls `appJwt.generateTokens(payload)` directly.
+- Permission checks happen in the `rbac([PERMISSIONS.*])` middleware, which loads the role's permissions per request via `rbacService.getPermissions(roleId)` (Redis cache `role_permissions:<roleId>`, fallback to DB). Guest requests use `rbacService.getGuestPermissions()`.
+- Editing a role's permissions in `RoleService` must invalidate `role_permissions:<roleId>` in Redis.
+
+## Shop
+
+- `shops.owner_id` is unique (one owner per shop). `shop_owner` is granted only during `registerShop`.
+- `users.assigned_shop_id` links a user to a shop (FK to `shops.id`); a worker can be assigned to at most one shop at a time.
+- Slug generation uses `ShopRepository.findSlugsByBase` to batch-fetch existing slugs.
+
+## Performance
+
+- Prefer single EXISTS / JOIN queries over fetch-all-then-filter.
+- Run independent reads with `Promise.all` when safe.
+- Avoid duplicate `findOne` for the same entity in one request handler.
+- Use `select: { ... }` to limit columns when the full entity is not needed.
+
+## Not present (do not add without an explicit requirement)
+
+- Kafka, RabbitMQ, sagas, outbox, event bus, generic event handlers.
+- Per-request DB connection pooling tweaks beyond the default `DataSource`.
+- AES-encrypted JWT roles, `user_role_assignments` table, `DEFAULT_SHOP_ID`. Stale references in older code or docs should be removed, not reintroduced.

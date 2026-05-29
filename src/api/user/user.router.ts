@@ -1,46 +1,48 @@
 import { asyncWrapper } from "@shared/helper/asyncWrapper";
 import { rateLimit } from "@shared/lib/rateLimit";
 import { authenticator } from "@shared/middlewares/authenticator";
-import { authorizer } from "@shared/middlewares/authorizer";
+import { rbac } from "@shared/middlewares/rbac";
 import { validator } from "@shared/middlewares/validator";
 import { Router } from "express";
 
+import { USER_PERMISSIONS } from "./user.constants";
 import userController from "./user.controller";
-import { getUsersRequestSchema, updateUserRequestSchema } from "./user.schema";
+import { updateUserRequestSchema } from "./user.schema";
 
-export default function setUpUserRouter(router: Router) {
-    const PREFIX = "/user";
+const userRouter = Router();
+userRouter.get(
+    "/",
+    rateLimit({ limit: 10, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    rbac([USER_PERMISSIONS.USER_READ]),
+    asyncWrapper(userController.getUser),
+);
 
-    router.get(
-        `${PREFIX}/`,
-        authenticator("access"),
-        asyncWrapper(userController.getUser),
-    );
+userRouter.patch(
+    "/",
+    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    validator({
+        body: updateUserRequestSchema,
+    }),
+    rbac([USER_PERMISSIONS.USER_UPDATE]),
+    asyncWrapper(userController.updateUser),
+);
 
-    router.get(
-        `${PREFIX}s/`,
-        validator({
-            query: getUsersRequestSchema,
-        }),
-        authenticator("access"),
-        authorizer("admin"),
-        asyncWrapper(userController.getUsers),
-    );
+userRouter.delete(
+    "/",
+    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    rbac([USER_PERMISSIONS.USER_DELETE]),
+    asyncWrapper(userController.deleteUser),
+);
 
-    router.patch(
-        `${PREFIX}/`,
-        validator({
-            body: updateUserRequestSchema,
-        }),
-        authenticator("access"),
-        rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
-        asyncWrapper(userController.updateUser),
-    );
+userRouter.post(
+    "/block",
+    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    rbac([USER_PERMISSIONS.USER_BLOCK]),
+    asyncWrapper(userController.blockUser),
+);
 
-    router.delete(
-        `${PREFIX}/`,
-        authenticator("access"),
-        authorizer("admin"),
-        asyncWrapper(userController.deleteUser),
-    );
-}
+export default userRouter;

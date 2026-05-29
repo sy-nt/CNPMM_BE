@@ -1,13 +1,12 @@
-import config from "@config";
-import AppDataSource from "@domain/db/mysql";
+import { UserEntity } from "@domain/entities/user.entity";
 import { BaseService } from "@shared/lib/base/service";
 import { BadRequestError } from "@shared/lib/http/httpError";
 import { removeNil } from "@shared/utils/object";
-import bcrypt from "bcrypt";
-import ms from "ms";
+import { hashPassword } from "@shared/utils/password";
 
-import { RedisKeyPrefix, UserError } from "./user.constants";
+import { UserError } from "./user.constants";
 import {
+    BlockUserRequestDto,
     DeleteUserRequestDto,
     GetUserByIdRequestDto,
     GetUserByIdResponseDto,
@@ -19,6 +18,17 @@ import {
 } from "./user.dto";
 
 export class UserService extends BaseService {
+    blockUser = async (dto: BlockUserRequestDto): Promise<void> => {
+        await this.repositories.user.update(
+            {
+                email: dto.email,
+            },
+            {
+                isBlocked: true,
+            },
+        );
+    };
+
     deleteUser = async (dto: DeleteUserRequestDto): Promise<void> => {
         const user = await this.repositories.user.findOne({
             select: {
@@ -30,25 +40,7 @@ export class UserService extends BaseService {
         });
 
         if (!user) throw new BadRequestError(UserError.USER_NOT_FOUND);
-        await AppDataSource.transaction(async (manager) => {
-            await this.repositories.user.delete(manager, { id: dto.id });
-        });
-    };
-
-    getCacheUserRoles = async (id: string) => {
-        const cachedRoles = await this.redis.get(
-            `${RedisKeyPrefix.USER_ROLES}:${id}`,
-        );
-        if (cachedRoles) return JSON.parse(cachedRoles) as string[];
-
-        const user = await this.getUserDetailed(id);
-        const roles = user.roles.map((role) => role.name);
-        await this.redis.setex(
-            `${RedisKeyPrefix.USER_ROLES}:${id}`,
-            ms(config.auth.jwt.refreshTokenExpiresIn) / 1000,
-            JSON.stringify(roles),
-        );
-        return roles;
+        await this.repositories.user.softDelete({ id: dto.id });
     };
 
     getUserById = async (
@@ -61,19 +53,7 @@ export class UserService extends BaseService {
         });
 
         if (!user) throw new BadRequestError(UserError.USER_NOT_FOUND);
-        return user;
-    };
-
-    getUserDetailed = async (id: string) => {
-        const user = await this.repositories.user.findOne({
-            relations: ["roles"],
-            where: {
-                id,
-            },
-        });
-
-        if (!user) throw new BadRequestError(UserError.USER_NOT_FOUND);
-        return user;
+        return this.toResponse(user);
     };
 
     getUsers = async (
@@ -105,21 +85,26 @@ export class UserService extends BaseService {
 
         if (!user) throw new BadRequestError(UserError.USER_NOT_FOUND);
 
-        await AppDataSource.transaction(async (manager) => {
-            await this.repositories.user.update(
-                manager,
-                { id: params.id },
-                removeNil({
-                    ...dto,
-                    password: dto.password
-                        ? await bcrypt.hash(dto.password, 10)
-                        : undefined,
-                }),
-            );
-        });
+        await this.repositories.user.update(
+            { id: params.id },
+            removeNil({
+                ...dto,
+                password: dto.password
+                    ? await hashPassword(dto.password)
+                    : undefined,
+            }),
+        );
 
         return this.getUserById({ id: params.id });
     };
+
+    private toResponse = (user: UserEntity): GetUserByIdResponseDto => ({
+        email: user.email,
+        firstName: user.firstName,
+        id: user.id,
+        imageUrl: user.imageUrl,
+        lastName: user.lastName,
+    });
 }
 
 const userService = new UserService();

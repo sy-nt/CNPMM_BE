@@ -19,6 +19,7 @@ export interface Config {
     db: {
         mysql: MySqlConfig;
         redis: RedisConfig;
+        s3: S3Config;
     };
     nodeEnv: NodeEnv;
     nodemailer: NodemailerConfig;
@@ -44,4 +45,12 @@ export interface RedisConfig {
     password: string;
     port: number;
     username: string;
+}
+
+export interface S3Config {
+    accessKeyId: string;
+    bucket: string;
+    endpoint: string;
+    region: string;
+    secretAccessKey: string;
 }

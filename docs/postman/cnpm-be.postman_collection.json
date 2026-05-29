@@ -2,12 +2,13 @@
   "info": {
     "_postman_id": "f2d5d900-3e6c-4a76-9f5e-9e7d7a0c7c71",
     "name": "CNPM Backend API",
-    "description": "Postman collection for the implemented health, auth, and user API modules mounted under `/api/v1`.",
+    "description": "Postman collection for the CNPM backend mounted at `/api/v1`. Modules: health-check, auth, user/users, address/addresses, image, role/roles, shop. All authenticated routes use bearer access tokens; `/auth/logout` and `/auth/refresh-token` use the refresh token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
       "name": "Health Check",
+      "description": "Routes defined by `src/api/healthCheck/healthCheck.router.ts`.",
       "item": [
         {
           "name": "Get Health Check",
@@ -15,13 +16,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/health_check",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "health_check"
-              ]
+              "raw": "{{baseUrl}}/health-check/",
+              "host": ["{{baseUrl}}"],
+              "path": ["health-check", ""]
             }
           },
           "response": []
@@ -48,13 +45,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/sign-up",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "sign-up"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sign-up"]
             }
           },
           "response": []
@@ -75,13 +67,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/activate-account",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "activate-account"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "activate-account"]
             }
           },
           "response": []
@@ -117,13 +104,52 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": {{otp}},\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
             }
           },
           "response": []
@@ -145,13 +171,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auth/logout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "logout"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
             }
           },
           "response": []
@@ -188,13 +209,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auth/refresh-token",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "refresh-token"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh-token"]
             }
           },
           "response": []
@@ -203,6 +219,7 @@
     },
     {
       "name": "User",
+      "description": "Singleton current-user routes defined by `src/api/user/user.router.ts` and list route `src/api/user/users.router.ts`. The singleton routes infer the user from the access token's `userId`.",
       "item": [
         {
           "name": "Get Current User",
@@ -221,58 +238,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/user/",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "user"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Users",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/users?limit=30&orderBy=createdAt&sort=desc",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "30"
-                },
-                {
-                  "key": "orderBy",
-                  "value": "createdAt"
-                },
-                {
-                  "key": "sort",
-                  "value": "desc"
-                },
-                {
-                  "key": "lastId",
-                  "value": "{{lastId}}",
-                  "disabled": true
-                }
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["user", ""]
             }
           },
           "response": []
@@ -303,12 +270,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/user/",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "user"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["user", ""]
             }
           },
           "response": []
@@ -330,12 +293,580 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/user/",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "user"
+              "host": ["{{baseUrl}}"],
+              "path": ["user", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
               ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/?page=1&limit=30&orderBy=createdAt&sort=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ""],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "30"
+                },
+                {
+                  "key": "orderBy",
+                  "value": "createdAt",
+                  "description": "email | createdAt"
+                },
+                {
+                  "key": "sort",
+                  "value": "desc",
+                  "description": "asc | desc"
+                },
+                {
+                  "key": "lastId",
+                  "value": "{{lastId}}",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Address",
+      "description": "Routes defined by `src/api/address/address.router.ts` (mutations) and `src/api/address/addresses.router.ts` (list). The bound user is resolved from the access token; the `userId` field is still validated by the schema, so it must be present in the request.",
+      "item": [
+        {
+          "name": "Create Address",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.data?.id) pm.collectionVariables.set('addressId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Home\",\n  \"addressLine\": \"123 Main St\",\n  \"city\": \"Ho Chi Minh\",\n  \"district\": \"District 1\",\n  \"state\": \"Ho Chi Minh\",\n  \"country\": \"Vietnam\",\n  \"isPrimary\": true,\n  \"shopId\": \"{{shopId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/address/",
+              "host": ["{{baseUrl}}"],
+              "path": ["address", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Address",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{addressId}}\",\n  \"userId\": \"{{userId}}\",\n  \"name\": \"Home (Updated)\",\n  \"addressLine\": \"456 Updated St\",\n  \"city\": \"Ho Chi Minh\",\n  \"district\": \"District 3\",\n  \"state\": \"Ho Chi Minh\",\n  \"country\": \"Vietnam\",\n  \"isPrimary\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/address/",
+              "host": ["{{baseUrl}}"],
+              "path": ["address", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Address",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{addressId}}\",\n  \"userId\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/address/",
+              "host": ["{{baseUrl}}"],
+              "path": ["address", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Addresses",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/addresses/?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses", ""],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                },
+                {
+                  "key": "shopId",
+                  "value": "{{shopId}}",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Image",
+      "description": "Routes defined by `src/api/image/image.router.ts`. `prefix` must be one of `product-image` | `user-avatar`. `extension` must be one of `jpg` | `jpeg` | `png`. `size` is bytes and capped at 25 MB.",
+      "item": [
+        {
+          "name": "Create Presigned URL",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"extension\": \"png\",\n  \"prefix\": \"user-avatar\",\n  \"size\": 102400\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/image/presigned-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["image", "presigned-url"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Role",
+      "description": "Routes defined by `src/api/role/role.router.ts` (mutations) and `src/api/role/roles.router.ts` (list + permissions catalog).",
+      "item": [
+        {
+          "name": "Create Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.data?.id) pm.collectionVariables.set('roleId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"custom_role\",\n  \"description\": \"Custom role created via Postman\",\n  \"permissionIds\": [\"{{permissionId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/role/",
+              "host": ["{{baseUrl}}"],
+              "path": ["role", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Role",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"custom_role_updated\",\n  \"description\": \"Updated description\",\n  \"permissionIds\": [\"{{permissionId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/role/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["role", "{{roleId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Role",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/role/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["role", "{{roleId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Roles",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles/?page=1&limit=30&orderBy=createdAt&sort=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["roles", ""],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "30"
+                },
+                {
+                  "key": "orderBy",
+                  "value": "createdAt",
+                  "description": "name | createdAt"
+                },
+                {
+                  "key": "sort",
+                  "value": "desc",
+                  "description": "asc | desc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Permissions",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles/permissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["roles", "permissions"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Shop",
+      "description": "Routes defined by `src/api/shop/shop.router.ts`. A user may own only one shop (`shops.owner_id` is unique). `status` transitions: PENDING → ACTIVE, ACTIVE ↔ SUSPENDED. Shop GET handlers expect an `idOrSlug` request param.",
+      "item": [
+        {
+          "name": "Register Shop",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.data?.id) pm.collectionVariables.set('shopId', json.data.id);",
+                  "  if (json.data?.slug) pm.collectionVariables.set('shopSlug', json.data.slug);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{shopName}}\",\n  \"description\": \"Demo shop for CNPM API testing\",\n  \"ownerId\": \"{{userId}}\",\n  \"addresses\": [\n    {\n      \"name\": \"HQ\",\n      \"addressLine\": \"123 Main St\",\n      \"city\": \"Ho Chi Minh\",\n      \"district\": \"District 1\",\n      \"state\": \"Ho Chi Minh\",\n      \"country\": \"Vietnam\",\n      \"isPrimary\": true\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/",
+              "host": ["{{baseUrl}}"],
+              "path": ["shop", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Shop",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{shopId}}\",\n  \"name\": \"{{shopName}} Updated\",\n  \"description\": \"Updated shop description\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/",
+              "host": ["{{baseUrl}}"],
+              "path": ["shop", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Shop Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{shopId}}\",\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["shop", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Shop",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shop/",
+              "host": ["{{baseUrl}}"],
+              "path": ["shop", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Shop Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shop/details",
+              "host": ["{{baseUrl}}"],
+              "path": ["shop", "details"]
             }
           },
           "response": []
@@ -365,12 +896,40 @@
       "value": "Password1!"
     },
     {
+      "key": "otp",
+      "value": "123456"
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
       "key": "lastId",
       "value": ""
     },
     {
-      "key": "otp",
-      "value": "123456"
+      "key": "addressId",
+      "value": ""
+    },
+    {
+      "key": "roleId",
+      "value": ""
+    },
+    {
+      "key": "permissionId",
+      "value": ""
+    },
+    {
+      "key": "shopId",
+      "value": ""
+    },
+    {
+      "key": "shopSlug",
+      "value": ""
+    },
+    {
+      "key": "shopName",
+      "value": "Demo Shop"
     }
   ]
 }

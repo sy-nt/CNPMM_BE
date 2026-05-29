@@ -4,13 +4,62 @@ description: Generate or modify service classes in this backend.
 
 # Service Generation Skill
 
-Use this when adding or changing business logic in `src/api/<module>`.
+Use when adding or changing logic in `src/api/<module>/*.service.ts`.
 
-1. Read the module's router, controller, DTO, schema, constants, and service before editing.
-2. Extend `BaseService` for new services so repositories, Redis, and logger access match existing code.
-3. Keep controllers thin; put business rules, repository access, Redis, hashing, JWT, and integration logic in services.
-4. Use existing repositories through `this.repositories`; add repository classes only when a new entity needs one.
-5. Use existing HTTP errors and module error constants for failure cases.
-6. Wrap persisted writes in `AppDataSource.transaction` and pass `manager` to repository write methods.
-7. Keep external side effects, such as email sending, outside database transactions.
-8. Verify touched files with TypeScript and linter diagnostics when practical.
+## Before editing
+
+1. Read the module's router, controller, DTO, schema, constants, and service.
+2. Read `src/shared/lib/rbac/rbac.constants.ts` if authorization is involved (don't hardcode permission strings).
+3. Check existing helpers on the relevant repository in `src/domain/repositories/` before adding new query logic in the service.
+
+## Validation boundary
+
+- The Joi schema in `*.schema.ts` already enforced **shape, type, format, range, enum, conditional** rules before your service ran. Do **not** re-validate the same things in the service.
+- Service validation is reserved for checks that need an external lookup:
+  - **Existence:** target row exists (`USER_NOT_FOUND`, `ROLE_NOT_FOUND`, `SHOP_NOT_FOUND`).
+  - **Uniqueness:** no duplicate row (`USER_ALREADY_EXISTS`, `SHOP_ALREADY_EXISTS`, `ROLE_ALREADY_EXISTS`).
+  - **Ownership:** the caller actually owns the target (`SHOP_NOT_OWNED`, soft-defensive `_ensureShopOwnership` against stale JWTs).
+  - **State transitions:** `SHOP_STATUS_TRANSITIONS[shop.status].includes(next)`.
+  - **Attempt counters:** Redis-backed throttles (`USER_LOGIN_BLOCKED`, `OTP_TOO_MANY_ATTEMPTS`).
+- If you find yourself re-implementing a shape check inside the service, move it into the schema instead (`Joi.when({ switch: [...] })` covers most "field depends on another field" cases — see `image.schema.createPresignedUrlRequestSchema`).
+- Never accept `userId`, `shopId`, or `ownerId` in the schema. Controllers inject them from the JWT — services receive the DTO already populated.
+
+## Structure
+
+1. Extend `BaseService` — gives you `this.repositories`, `this.redis`, `this.config`, `this.queryBuilder`, and inherited `this.logger`.
+2. Keep controllers thin; all business rules live in the service.
+3. Export a singleton: `const xService = new XService(); export default xService;`.
+4. Method style: prefer `async method(...) { ... }` for new code (matches `RoleService`, `AddressService`, `ShopService`, `ImageService`). `AuthService` and `UserService` use arrow properties; do not mix styles within one file.
+
+## Import rules
+
+- **Do not** import services from other API modules (`auth`, `healthCheck`, `shop`, `user`). Enforced by `eslint.config.mjs` `no-restricted-imports`.
+- **May** import shared services where established (e.g. `@shared/lib/rbac/rbac.service` from `auth` for guest-permission warmup, though current `auth.service` does not need it).
+- **Do not** import from `@api/**` in `src/shared/**`. The single exception is `src/shared/lib/rbac/rbac.constants.ts`.
+
+## Constants and utilities
+
+- Module error messages, Redis key prefixes, TTLs, OTP bounds, status transition maps → `<module>.constants.ts`.
+- Bcrypt rounds, global Redis flags → `@shared/constants/security.constants.ts` and `@shared/constants/index.ts`.
+- Role/permission names → `@shared/lib/rbac/rbac.constants.ts` (`RBAC_SYSTEM_ROLES.*`, `RBAC_PERMISSIONS.*`).
+- Password hashing → `hashPassword` / `verifyPassword` from `@shared/utils/password`.
+- Partial updates → `removeNil` from `@shared/utils/object`.
+
+## Data access
+
+1. Prefer repository methods; add query-builder helpers on the repository class for repeated checks (see `ShopRepository.findSlugsByBase`).
+2. **Do not** open `AppDataSource.transaction(...)` inside HTTP service code — the per-request transaction set up by `contextMiddleware` already covers `create / createMany / update / delete / softDelete`. Throw a typed `HttpError` to trigger rollback.
+3. Keep emails, S3 presign, external HTTP, and other non-DB side effects in mind — they are not rolled back if the request later fails.
+4. After mutating a role's permissions, invalidate the Redis cache key `role_permissions:<roleId>` (see `RoleService.deleteRole` / `updateRole`).
+5. Use `Promise.all` for independent reads when safe.
+6. Avoid fetching the full entity when `select: { id: true }` or an EXISTS query suffices.
+
+## Shop-specific
+
+- `shop_owner` granted only inside `registerShop`. Worker assignment (`shop_manager` / `shop_staff`) goes through dedicated APIs and respects `SHOP_MAX_WORKERS` from `shop.constants.ts`.
+- Use `ShopRepository.findSlugsByBase` for slug generation.
+
+## Verify
+
+- `npx tsc --noEmit` and `npx eslint <files>` on touched files.
+- Do not start the dev server or run builds without explicit approval.

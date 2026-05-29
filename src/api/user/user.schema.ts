@@ -1,11 +1,9 @@
-import { limit, page, sort } from "@shared/schema";
+import { limit, sort } from "@shared/schema";
 import Joi from "joi";
 
 export const getUsersRequestSchema = Joi.object({
     lastId: Joi.string().uuid().optional(),
     limit: limit,
-    orderBy: Joi.string().valid("email", "createdAt").default("createdAt"),
-    page: page,
     sort: sort,
 });
 

@@ -3,6 +3,10 @@ export type ActivateAccountRequestDto = {
     otp: number;
 };
 
+export type ForgotPasswordRequestDto = {
+    email: string;
+};
+
 export type LoginRequestDto = {
     email: string;
     password: string;
@@ -24,6 +28,12 @@ export type RefreshTokenRequestDto = {
 export type RefreshTokenResponseDto = {
     accessToken: string;
     refreshToken: string;
+};
+
+export type ResetPasswordRequestDto = {
+    email: string;
+    otp: number;
+    password: string;
 };
 
 export type SignUpRequestDto = {

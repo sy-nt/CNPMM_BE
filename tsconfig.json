@@ -35,6 +35,12 @@
       ],
       "@domain/*": [
         "src/domain/*"
+      ],
+      "@schedulers/*": [
+        "src/schedulers/*"
+      ],
+      "@schedulers": [
+        "src/schedulers/index"
       ]
     }
   },

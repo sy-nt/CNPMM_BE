@@ -1,16 +1,58 @@
 ---
-description: Apply database transaction patterns with TypeORM.
+description: Apply database transaction patterns with TypeORM in this project.
 ---
 
 # Database Transaction Skill
 
-Use this when adding or changing database writes.
+Use when adding or changing database writes.
 
-1. Read the target service and repository methods before editing.
-2. Use `AppDataSource.transaction(async (manager) => { ... })` for create, update, delete, and multi-step persisted writes.
-3. Pass the transaction `manager` into repository write methods such as `create`, `createMany`, `update`, `delete`, and `softDelete`.
-4. Keep reads outside transactions unless they must be consistent with writes in the same operation.
-5. Do not send email, call external APIs, publish events, or perform long-running work inside the transaction callback.
-6. Use `removeNil` when applying partial update DTOs if optional fields should not overwrite existing data.
-7. Keep entity changes in `src/domain/entities` and schema changes in TypeORM migrations.
-8. Verify type safety after transaction changes with `tsc --noEmit` when practical.
+## Per-request transaction (default for HTTP)
+
+- `src/shared/middlewares/ctx.ts` mounts `contextMiddleware`, which calls `RequestContextService.runWithContext`. That method:
+  1. Creates a `QueryRunner` via `AppDataSource.createQueryRunner()`.
+  2. Connects and `startTransaction()`.
+  3. Stores the runner on the async-local `RequestContext`.
+- `src/shared/middlewares/transaction.ts` registers `res.on('finish'|'close'|'error')` to:
+  - `commitTransaction()` when the response status is 2xx.
+  - `rollbackTransaction()` otherwise.
+  - Always `release()` the runner.
+- `BaseRepository._queryRunner()` reuses the contextual runner for `create / createMany / update / delete / softDelete`. Reads via `find / findOne / paginate / paginateKeySet / queryBuilder` go through the shared repository (outside the runner) — that is intentional and fine for non-transactional reads.
+
+### Implication
+
+- **Do not** wrap request handler work in `AppDataSource.transaction(async (manager) => ...)` — it would create a *second*, parallel transaction and bypass the rollback wired to the response lifecycle.
+- Just call `this.repositories.<name>.create/update/...` from the service; the per-request runner picks them up.
+- Throw a typed error from `@shared/lib/http/httpError` to trigger rollback (status will be non-2xx via `errorHandler`).
+
+## When `AppDataSource.transaction(...)` is correct
+
+- Code that runs outside an HTTP request — e.g. seeds (`src/domain/seed/index.ts`), CLI scripts, future cron jobs. Those have no `contextMiddleware` running, so an explicit transaction is required.
+
+## Side effects (outside DB writes)
+
+- Email (`appNodeMailer.send*Email`), S3 presigned URL generation, external HTTP, Redis writes — these are not part of the SQL transaction. If the response later fails:
+  - DB writes will be rolled back by `transactionMiddleware`.
+  - The side effect has already happened.
+- Therefore: keep side effects idempotent / safe to retry, and prefer to perform them *after* the critical persistence step.
+
+## Updates
+
+- Use `removeNil` (`@shared/utils/object`) for partial-update DTOs so `undefined` fields are not overwritten.
+- For password updates, hash via `hashPassword` from `@shared/utils/password`; use `BCRYPT_SALT_ROUNDS` from `@shared/constants/security.constants.ts` (already wired through the helper).
+- Prefer returning the merged in-memory DTO over re-fetching when the service already holds the entity.
+
+## Schema changes
+
+- Entity changes → `src/domain/entities/*.entity.ts` (file must end with `.entity.ts` — the data source glob is `src/domain/entities/*.entity.{ts,js}`).
+- New schema → new migration file in `src/domain/migrations`. Use `date +%Y%m%d%H%M%S` for the timestamp prefix (do not invent timestamps).
+- Run via the project scripts: `yarn migration:create` to scaffold, `yarn migration:run:dev` to apply locally.
+- Split the migration into small `private async createXTable(qr)` / `dropXTable(qr)` helpers and call them in `up()` / `down()` in dependency order (parents before children; reverse on the way down).
+
+## Repository helpers
+
+- Add EXISTS / aggregate / multi-row checks as methods on the concrete repository class (see `ShopRepository.findSlugsByBase`) — services should not build query builders inline.
+
+## Verify
+
+- `npx tsc --noEmit` on touched files.
+- `npx eslint <files>` for import-order and style.

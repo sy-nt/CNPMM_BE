@@ -1,12 +1,72 @@
 {
   "project": {
-    "architecture": "Express TypeScript modular backend",
-    "database": "TypeORM with MySQL",
+    "architecture": "Express TypeScript modular monolith",
+    "database": "TypeORM + MySQL",
+    "cache": "Redis (ioredis)",
+    "objectStorage": "AWS S3 (presigned URLs)",
     "observability": ["Winston", "OpenTelemetry"],
     "primaryDirectories": ["src/api", "src/domain", "src/shared", "src/config"],
-    "validation": "Joi"
+    "apiModulesMounted": [
+      "healthCheck",
+      "auth",
+      "user",
+      "users",
+      "address",
+      "addresses",
+      "image",
+      "role",
+      "roles",
+      "shop",
+      "shops"
+    ],
+    "validation": "Joi (schema-first; service only handles DB/Redis/JWT-lookup rules)",
+    "authorization": "RBAC (plain roleId in JWT; per-request Redis cache + DB fallback in rbac middleware; TTL 1h)",
+    "transactionModel": "Per-request transaction opened by contextMiddleware, committed/rolled-back by transactionMiddleware",
+    "postmanCollection": "docs/postman/cnpm-be.postman_collection.json"
+  },
+  "middleware": {
+    "appOrder": [
+      "cors",
+      "express.json",
+      "contextMiddleware",
+      "transactionMiddleware",
+      "requestTracker",
+      "appRateLimit",
+      "morgan",
+      "/api/v1 router",
+      "handleNotFound",
+      "handleError"
+    ],
+    "routeOrderRbac": [
+      "rateLimit",
+      "authenticator",
+      "validator",
+      "rbac",
+      "asyncWrapper(controller.method)"
+    ],
+    "routeOrderPublic": [
+      "validator",
+      "rateLimit",
+      "asyncWrapper(controller.method)"
+    ]
+  },
+  "boundaries": {
+    "noCrossApiServiceImports": true,
+    "noApiImportsInShared": true,
+    "sharedRbacEscape": "src/shared/lib/rbac/rbac.constants.ts aggregates per-module *_PERMISSIONS maps (eslint-disable no-restricted-imports inline)",
+    "eslintEnforced": "eslint.config.mjs no-restricted-imports + perfectionist recommended-alphabetical"
+  },
+  "identityScoping": {
+    "rule": "userId / shopId / ownerId never come from request body or query — controllers inject from RequestContextService.getJwtPayload()",
+    "jwtFields": {
+      "userId": "jwtPayload.userId",
+      "shopId": "jwtPayload.assignedShopId",
+      "ownerId": "jwtPayload.assignedShopId (shop_owner)"
+    },
+    "exception": "Admin-only endpoints targeting arbitrary records (e.g. PATCH /shop/status). The permission must not be granted to shop_owner / shop_moderator / shop_staff."
   },
   "rules": {
+    "project": ".cursor/project/project.mdc",
     "architecture": ".cursor/rules/architecture.mdc",
     "style": ".cursor/rules/style.mdc"
   },
@@ -14,6 +74,7 @@
     "apiEndpoint": ".cursor/skills/api-endpoint.mdc",
     "databaseTransaction": ".cursor/skills/db-transaction.mdc",
     "eventHandler": ".cursor/skills/event-handler.mdc",
+    "rbacAuthorization": ".cursor/skills/rbac-authorization.mdc",
     "serviceGeneration": ".cursor/skills/service-generation.mdc"
   }
 }

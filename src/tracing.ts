@@ -31,9 +31,7 @@ sdk.start();
 
 process.on("SIGTERM", () => {
     sdk.shutdown()
-        // eslint-disable-next-line no-console
         .then(() => console.log("OpenTelemetry SDK shut down successfully"))
-        // eslint-disable-next-line no-console
         .catch((error) => console.error("Error shutting down SDK", error))
         .finally(() => process.exit(0));
 });

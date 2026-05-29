@@ -38,7 +38,6 @@ export default [
                     skipComments: true,
                 },
             ],
-            "no-console": "error",
             "no-eval": "error",
             "no-implied-eval": "error",
             "no-useless-concat": "error",
@@ -47,6 +46,118 @@ export default [
 
             // 🧹 General clean code rules
             "prefer-const": "error",
+        },
+    },
+    {
+        files: ["src/api/auth/**/*.ts"],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: [
+                                "@api/healthCheck/**",
+                                "@api/shop/**",
+                                "@api/user/**",
+                                "**/api/healthCheck/**",
+                                "**/api/shop/**",
+                                "**/api/user/**",
+                            ],
+                            message:
+                                "API modules must not import services from other API modules.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/api/healthCheck/**/*.ts"],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: [
+                                "@api/auth/**",
+                                "@api/shop/**",
+                                "@api/user/**",
+                                "**/api/auth/**",
+                                "**/api/shop/**",
+                                "**/api/user/**",
+                            ],
+                            message:
+                                "API modules must not import services from other API modules.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/api/shop/**/*.ts"],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: [
+                                "@api/auth/**",
+                                "@api/healthCheck/**",
+                                "@api/user/**",
+                                "**/api/auth/**",
+                                "**/api/healthCheck/**",
+                                "**/api/user/**",
+                            ],
+                            message:
+                                "API modules must not import services from other API modules.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/api/user/**/*.ts"],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: [
+                                "@api/auth/**",
+                                "@api/healthCheck/**",
+                                "@api/shop/**",
+                                "**/api/auth/**",
+                                "**/api/healthCheck/**",
+                                "**/api/shop/**",
+                            ],
+                            message:
+                                "API modules must not import services from other API modules.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/shared/**/*.ts"],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: ["@api/**", "**/api/**"],
+                            message: "Shared modules must not import from API modules.",
+                        },
+                    ],
+                },
+            ],
         },
     },
 ];

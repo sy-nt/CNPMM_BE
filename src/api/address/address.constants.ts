@@ -1,0 +1,29 @@
+import { buildModulePermissionsMap } from "@shared/utils/role";
+
+export enum AddressError {
+    ADDRESS_NOT_FOUND = "Address not found",
+    SHOP_NOT_OWNED = "Shop is not owned by the user",
+}
+
+export const RBAC_ADDRESS_ACTIONS = {
+    CREATE: "create",
+    DELETE: "delete",
+    READ: "read",
+    UPDATE: "update",
+} as const;
+
+export const RBAC_ADDRESS_MODULES = {
+    ADDRESS: "address",
+} as const;
+
+export const ADDRESS_PERMISSIONS = buildModulePermissionsMap(
+    RBAC_ADDRESS_MODULES,
+    RBAC_ADDRESS_ACTIONS,
+);
+
+export type RBAC_ADDRESS_ACTIONS =
+    (typeof RBAC_ADDRESS_ACTIONS)[keyof typeof RBAC_ADDRESS_ACTIONS];
+export type RBAC_ADDRESS_MODULES =
+    (typeof RBAC_ADDRESS_MODULES)[keyof typeof RBAC_ADDRESS_MODULES];
+export type RBAC_ADDRESS_PERMISSIONS =
+    `${RBAC_ADDRESS_MODULES}:${RBAC_ADDRESS_ACTIONS}`;

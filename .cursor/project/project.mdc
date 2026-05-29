@@ -5,14 +5,23 @@ alwaysApply: true
 
 # Project Guidance
 
-- This project is an Express TypeScript API organized into `src/api`, `src/domain`, `src/shared`, and `src/config`.
-- Use the existing route -> controller -> service -> repository flow for API work.
-- Validate request `body`, `query`, and `params` with Joi schemas through `validator`.
-- Extract typed request data with `extractRequest` and request identity with `extractContext`.
-- Return controller responses through existing response decorators such as `@OkResponse()` and `@CreatedResponse()`.
-- Put business logic in services extending `BaseService`; use shared repositories through `this.repositories`.
-- Use TypeORM entities and repositories under `src/domain`; keep database schema changes in migrations.
-- Use Redis through the existing `appRedis` or `BaseService.redis` helpers.
-- Reuse existing shared middleware, decorators, HTTP errors, logger, JWT, nodemailer, rate limit, and utility modules before adding new abstractions.
-- Do not start dev servers or build the app without explicit approval. Prefer targeted TypeScript, lint, or test checks.
-- Do not introduce new frameworks or external dependencies unless the project lacks a suitable existing library and the need is verified.
+- Express TypeScript API: `src/api`, `src/domain`, `src/shared`, `src/config`.
+- API modules under `src/api/<module>`. Mounted under `/api/v1` via `src/api/app.router.ts`: `healthCheck`, `auth`, `user`, `users`, `address`, `addresses`, `image`, `role`, `roles`, `shop`, `shops`.
+- Flow: `route → controller → service → repository`. Joi validation in routers; business logic in services extending `BaseService`; TypeORM access in repositories extending `BaseRepository`.
+- Controllers: `extractRequest<Dto>(req, 'body' | 'query' | 'params')` for input, `RequestContextService.getJwtPayload() / getTokens() / getShopId() / getRequestId()` for context, response decorators `@OkResponse()` / `@CreatedResponse()`. There is **no** `extractContext` helper.
+- **JWT-scoped identity (MANDATORY):** request bodies/queries must **never** carry `userId`, `shopId`, or `ownerId`. Controllers inject them from `RequestContextService.getJwtPayload()` (`jwtPayload.userId`, `jwtPayload.assignedShopId`). The schema must not declare these fields — Joi will then 400 any client that tries to spoof them.
+  - Exception: admin endpoints that intentionally target an arbitrary record (e.g. `PATCH /shop/status` accepts `id` because only admin has `SHOP_UPDATE_STATUS`). These must be gated by an admin-only permission in `RBAC_SYSTEM_ROLES_PERMISSIONS`.
+- **Validation belongs in `*.schema.ts`:** Joi enforces shape, type, format, range, enum membership, conditional rules (e.g. per-prefix image size via `Joi.when()`). Services validate only business rules that require DB/Redis/JWT lookup (existence, uniqueness, ownership, state transitions, attempt counters).
+- **Service import boundaries (enforced by ESLint `no-restricted-imports`):**
+  - API modules must not import services from other API modules.
+  - `src/shared/**` must not import from `src/api/**`. The single exception is `src/shared/lib/rbac/rbac.constants.ts` (uses `/* eslint-disable no-restricted-imports */`) to aggregate per-module permission maps.
+- **Constants:** no magic numbers/strings in routers/services. Module values in `<module>.constants.ts`; RBAC in `src/shared/lib/rbac/rbac.constants.ts`; bcrypt/security in `src/shared/constants/security.constants.ts`; global Redis keys in `src/shared/constants/index.ts`.
+- **RBAC:** JWT carries plain `{ userId, roleId, assignedShopId? }`. The `rbac([PERMISSIONS.*])` middleware resolves the role's permissions per request via `rbacService.getPermissions(roleId)` — Redis cache `role_permissions:<roleId>` (TTL `ROLE_PERMISSIONS_CACHE_TTL_SECONDS = 1h`), fallback to DB `roles ↔ permissions`. Anonymous requests use `rbacService.getGuestPermissions()`. After mutating a role's permissions, invalidate `role_permissions:<roleId>` in Redis (see `RoleService.updateRole / deleteRole`).
+- **Transactions (per-request):** `contextMiddleware` opens a `QueryRunner` + `startTransaction` for every request and stores it on the async-local `RequestContext`. `transactionMiddleware` commits on 2xx and rolls back on non-2xx via `res.on('finish'|'close'|'error')`. `BaseRepository` writes pick up that contextual `queryRunner` automatically — **services do not call `AppDataSource.transaction` for HTTP request work**. Only seed/CLI scripts use `AppDataSource.transaction` directly.
+- **Side effects:** email (`appNodeMailer`), S3 presigned URLs, external HTTP — keep them inside the request handler but be aware they are not rolled back if the response fails after they execute.
+- **Shop:** `shops.owner_id` is unique. Owner role assigned during `registerShop` only. Workers (`shop_moderator` / `shop_staff`) are assigned via `POST /shop/workers` — `shopId` comes from the caller's `jwtPayload.assignedShopId`, not from the body.
+- **Repositories:** `class XRepository extends BaseRepository<X> {}` + `const x = new XRepository(XEntity)`. Add targeted query-builder helpers on the class (see `ShopRepository.findSlugsByBase`, `UserRepository.countByAssignedShop`, `PermissionRepository.countByIds`, `RoleRepository.setPermissions`). Use `Promise.all` for independent reads.
+- **Data:** TypeORM + MySQL (`src/domain/db/mysql.ts`), Redis via ioredis (`src/domain/db/redis.ts`), S3 via AWS SDK v3 (`src/domain/db/s3.ts`). Entities loaded by glob `src/domain/entities/*.entity.{ts,js}`. Migrations in `src/domain/migrations`. Schedulers in `src/schedulers/`.
+- **Postman:** `docs/postman/cnpm-be.postman_collection.json` — keep in sync when routes change.
+- Do not start dev servers or builds without explicit approval. Prefer `npx tsc --noEmit` and ESLint on touched files.
+- Do not add frameworks or dependencies unless verified missing and required.

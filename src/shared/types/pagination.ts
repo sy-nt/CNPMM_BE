@@ -8,6 +8,7 @@ export type DefaultPaginationResponse<T> = {
     currentPage: number;
     items: T[];
     limit: number;
+    total: number;
     totalPage: number;
 };
 

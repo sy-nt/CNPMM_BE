@@ -32,6 +32,13 @@ const envSchema = joi.object<Config>({
             port: joi.number().required(),
             username: joi.string().optional().default(""),
         }),
+        s3: joi.object({
+            accessKeyId: joi.string().required(),
+            bucket: joi.string().required(),
+            endpoint: joi.string().required(),
+            region: joi.string().required(),
+            secretAccessKey: joi.string().required(),
+        }),
     }),
     nodeEnv: joi.string().valid("DEV", "STAG", "PROD").default("DEV"),
     nodemailer: joi.object({
@@ -70,6 +77,13 @@ const initConfig = () => {
                     password: process.env.REDIS_PASSWORD,
                     port: process.env.REDIS_PORT,
                     username: process.env.REDIS_USERNAME,
+                },
+                s3: {
+                    accessKeyId: process.env.S3_ACCESS_KEY_ID,
+                    bucket: process.env.S3_BUCKET,
+                    endpoint: process.env.S3_ENDPOINT,
+                    region: process.env.S3_REGION,
+                    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
                 },
             },
             nodeEnv: process.env.NODE_ENV,
