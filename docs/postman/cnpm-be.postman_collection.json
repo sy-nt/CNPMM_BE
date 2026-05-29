@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "f2d5d900-3e6c-4a76-9f5e-9e7d7a0c7c71",
     "name": "CNPM Backend API",
-    "description": "Postman collection for the CNPM backend mounted at `/api/v1`. Modules: health-check, auth, user/users, address/addresses, image, role/roles, shop. All authenticated routes use bearer access tokens; `/auth/logout` and `/auth/refresh-token` use the refresh token.",
+    "description": "Postman collection for the CNPM backend mounted at `/api/v1`. Modules: health-check, auth, user/users, address/addresses, image, role/roles, shop/shops, category/categories. All authenticated routes use bearer access tokens; `/auth/logout` and `/auth/refresh-token` use the refresh token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -17,8 +17,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/health-check/",
-              "host": ["{{baseUrl}}"],
-              "path": ["health-check", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health-check",
+                ""
+              ]
             }
           },
           "response": []
@@ -45,8 +50,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/sign-up",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "sign-up"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sign-up"
+              ]
             }
           },
           "response": []
@@ -67,8 +77,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/activate-account",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "activate-account"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "activate-account"
+              ]
             }
           },
           "response": []
@@ -104,8 +119,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             }
           },
           "response": []
@@ -126,8 +146,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/forgot-password",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "forgot-password"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
             }
           },
           "response": []
@@ -148,8 +173,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/reset-password",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "reset-password"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
             }
           },
           "response": []
@@ -171,8 +201,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auth/logout",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "logout"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
             }
           },
           "response": []
@@ -209,8 +244,41 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auth/refresh-token",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "refresh-token"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh-token"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Auth Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "status"
+              ]
             }
           },
           "response": []
@@ -238,8 +306,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/user/",
-              "host": ["{{baseUrl}}"],
-              "path": ["user", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                ""
+              ]
             }
           },
           "response": []
@@ -270,8 +343,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/user/",
-              "host": ["{{baseUrl}}"],
-              "path": ["user", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                ""
+              ]
             }
           },
           "response": []
@@ -293,8 +371,50 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/user/",
-              "host": ["{{baseUrl}}"],
-              "path": ["user", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Block User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/block",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "block"
+              ]
             }
           },
           "response": []
@@ -315,22 +435,18 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/users/?page=1&limit=30&orderBy=createdAt&sort=desc",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", ""],
+              "raw": "{{baseUrl}}/users/?limit=30&sort=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                ""
+              ],
               "query": [
-                {
-                  "key": "page",
-                  "value": "1"
-                },
                 {
                   "key": "limit",
                   "value": "30"
-                },
-                {
-                  "key": "orderBy",
-                  "value": "createdAt",
-                  "description": "email | createdAt"
                 },
                 {
                   "key": "sort",
@@ -340,6 +456,11 @@
                 {
                   "key": "lastId",
                   "value": "{{lastId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "email",
+                  "value": "{{email}}",
                   "disabled": true
                 }
               ]
@@ -389,12 +510,17 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Home\",\n  \"addressLine\": \"123 Main St\",\n  \"city\": \"Ho Chi Minh\",\n  \"district\": \"District 1\",\n  \"state\": \"Ho Chi Minh\",\n  \"country\": \"Vietnam\",\n  \"isPrimary\": true,\n  \"shopId\": \"{{shopId}}\"\n}"
+              "raw": "{\n  \"name\": \"Home\",\n  \"addressLine\": \"123 Main St\",\n  \"city\": \"Ho Chi Minh\",\n  \"district\": \"District 1\",\n  \"state\": \"Ho Chi Minh\",\n  \"country\": \"Vietnam\",\n  \"isPrimary\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/address/",
-              "host": ["{{baseUrl}}"],
-              "path": ["address", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "address",
+                ""
+              ]
             }
           },
           "response": []
@@ -421,12 +547,17 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{addressId}}\",\n  \"userId\": \"{{userId}}\",\n  \"name\": \"Home (Updated)\",\n  \"addressLine\": \"456 Updated St\",\n  \"city\": \"Ho Chi Minh\",\n  \"district\": \"District 3\",\n  \"state\": \"Ho Chi Minh\",\n  \"country\": \"Vietnam\",\n  \"isPrimary\": true\n}"
+              "raw": "{\n  \"name\": \"Home (Updated)\",\n  \"addressLine\": \"456 Updated St\",\n  \"city\": \"Ho Chi Minh\",\n  \"district\": \"District 3\",\n  \"state\": \"Ho Chi Minh\",\n  \"country\": \"Vietnam\",\n  \"isPrimary\": true\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/address/",
-              "host": ["{{baseUrl}}"],
-              "path": ["address", ""]
+              "raw": "{{baseUrl}}/address/{{addressId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "address",
+                "{{addressId}}"
+              ]
             }
           },
           "response": []
@@ -445,20 +576,16 @@
               ]
             },
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{addressId}}\",\n  \"userId\": \"{{userId}}\"\n}"
-            },
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/address/",
-              "host": ["{{baseUrl}}"],
-              "path": ["address", ""]
+              "raw": "{{baseUrl}}/address/{{addressId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "address",
+                "{{addressId}}"
+              ]
             }
           },
           "response": []
@@ -479,19 +606,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/addresses/?userId={{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["addresses", ""],
-              "query": [
-                {
-                  "key": "userId",
-                  "value": "{{userId}}"
-                },
-                {
-                  "key": "shopId",
-                  "value": "{{shopId}}",
-                  "disabled": true
-                }
+              "raw": "{{baseUrl}}/addresses/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "addresses",
+                ""
               ]
             }
           },
@@ -529,8 +650,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/image/presigned-url",
-              "host": ["{{baseUrl}}"],
-              "path": ["image", "presigned-url"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "image",
+                "presigned-url"
+              ]
             }
           },
           "response": []
@@ -581,8 +707,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/role/",
-              "host": ["{{baseUrl}}"],
-              "path": ["role", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "role",
+                ""
+              ]
             }
           },
           "response": []
@@ -613,8 +744,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/role/{{roleId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["role", "{{roleId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "role",
+                "{{roleId}}"
+              ]
             }
           },
           "response": []
@@ -636,8 +772,41 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/role/{{roleId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["role", "{{roleId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "role",
+                "{{roleId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Role",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/role/{{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "role",
+                "{{roleId}}"
+              ]
             }
           },
           "response": []
@@ -658,9 +827,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/roles/?page=1&limit=30&orderBy=createdAt&sort=desc",
-              "host": ["{{baseUrl}}"],
-              "path": ["roles", ""],
+              "raw": "{{baseUrl}}/roles?page=1&limit=30&orderBy=createdAt&sort=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                ""
+              ],
               "query": [
                 {
                   "key": "page",
@@ -702,8 +876,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/roles/permissions",
-              "host": ["{{baseUrl}}"],
-              "path": ["roles", "permissions"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "permissions"
+              ]
             }
           },
           "response": []
@@ -755,8 +934,50 @@
             },
             "url": {
               "raw": "{{baseUrl}}/shop/",
-              "host": ["{{baseUrl}}"],
-              "path": ["shop", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Worker",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{workerEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/workers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "workers"
+              ]
             }
           },
           "response": []
@@ -787,8 +1008,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/shop/",
-              "host": ["{{baseUrl}}"],
-              "path": ["shop", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                ""
+              ]
             }
           },
           "response": []
@@ -819,8 +1045,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/shop/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["shop", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "status"
+              ]
             }
           },
           "response": []
@@ -841,9 +1072,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/shop/",
-              "host": ["{{baseUrl}}"],
-              "path": ["shop", ""]
+              "raw": "{{baseUrl}}/shop/{{shopSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "{{shopSlug}}"
+              ]
             }
           },
           "response": []
@@ -864,9 +1100,269 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/shop/details",
-              "host": ["{{baseUrl}}"],
-              "path": ["shop", "details"]
+              "raw": "{{baseUrl}}/shop/details/{{shopSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "details",
+                "{{shopSlug}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Shops",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shops/?page=1&limit=30&orderBy=createdAt&sort=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "30"
+                },
+                {
+                  "key": "orderBy",
+                  "value": "createdAt",
+                  "description": "createdAt | name | status"
+                },
+                {
+                  "key": "sort",
+                  "value": "desc",
+                  "description": "asc | desc"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Category",
+      "description": "Routes defined by `src/api/category/category.router.ts` (mutations + tree) and `src/api/category/categories.router.ts` (system list). System categories have `shopId = null`; shop-scoped categories carry the caller's `assignedShopId` from the JWT. `parentId` is immutable; deletes soft-cascade the whole subtree. Max depth is 4 (root depth 0).",
+      "item": [
+        {
+          "name": "Create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.data?.id) pm.collectionVariables.set('categoryId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Category\",\n  \"description\": \"Demo category\",\n  \"iconUrl\": \"https://example.com/icon.png\",\n  \"displayOrder\": 0,\n  \"parentId\": \"{{parentCategoryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/category/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "category",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Category (Updated)\",\n  \"description\": \"Updated description\",\n  \"iconUrl\": \"https://example.com/icon-updated.png\",\n  \"displayOrder\": 1,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/category/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "category",
+                "{{categoryId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/category/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "category",
+                "{{categoryId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category Tree",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/category/{{categoryId}}/tree?depth=4",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "category",
+                "{{categoryId}}",
+                "tree"
+              ],
+              "query": [
+                {
+                  "key": "depth",
+                  "value": "4",
+                  "description": "1..CATEGORY_MAX_DEPTH (default 4)"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Categories",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories/system?page=1&limit=30&orderBy=displayOrder&sort=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "system"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "30"
+                },
+                {
+                  "key": "orderBy",
+                  "value": "displayOrder",
+                  "description": "displayOrder | name | createdAt"
+                },
+                {
+                  "key": "sort",
+                  "value": "asc",
+                  "description": "asc | desc"
+                }
+              ]
             }
           },
           "response": []
@@ -889,7 +1385,7 @@
     },
     {
       "key": "email",
-      "value": "test@example.com"
+      "value": "admin@example.com"
     },
     {
       "key": "password",
@@ -930,6 +1426,18 @@
     {
       "key": "shopName",
       "value": "Demo Shop"
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "parentCategoryId",
+      "value": ""
+    },
+    {
+      "key": "workerEmail",
+      "value": "worker@example.com"
     }
   ]
 }

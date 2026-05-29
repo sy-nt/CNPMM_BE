@@ -23,5 +23,7 @@ alwaysApply: true
 - **Repositories:** `class XRepository extends BaseRepository<X> {}` + `const x = new XRepository(XEntity)`. Add targeted query-builder helpers on the class (see `ShopRepository.findSlugsByBase`, `UserRepository.countByAssignedShop`, `PermissionRepository.countByIds`, `RoleRepository.setPermissions`). Use `Promise.all` for independent reads.
 - **Data:** TypeORM + MySQL (`src/domain/db/mysql.ts`), Redis via ioredis (`src/domain/db/redis.ts`), S3 via AWS SDK v3 (`src/domain/db/s3.ts`). Entities loaded by glob `src/domain/entities/*.entity.{ts,js}`. Migrations in `src/domain/migrations`. Schedulers in `src/schedulers/`.
 - **Postman:** `docs/postman/cnpm-be.postman_collection.json` — keep in sync when routes change.
+- **Plans:** every plan produced by `CreatePlan` must be mirrored into `<workspace_root>/plans/<plan-slug>.plan.md` and committed. The Cursor tool writes the canonical copy under `~/.cursor/plans/<slug>_<hash>.plan.md`; copy that file into the repo (drop the random hash suffix) so plans are reviewable alongside code. The original under `~/.cursor/plans/` stays put — we mirror, not move.
 - Do not start dev servers or builds without explicit approval. Prefer `npx tsc --noEmit` and ESLint on touched files.
 - Do not add frameworks or dependencies unless verified missing and required.
+- Can use gitnexus skills to for exploring/debugging/impact analysis/refactoring project

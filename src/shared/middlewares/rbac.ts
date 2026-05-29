@@ -8,10 +8,16 @@ export const rbac = (requirePermissions: PermissionName[]) => {
     return async (_req: Request, _res: Response, next: NextFunction) => {
         const jwtPayload = RequestContextService.getJwtPayload();
         let permissions: PermissionName[] = [];
-        if (!jwtPayload) {
-            permissions = await rbacService.getGuestPermissions();
-        } else {
-            permissions = await rbacService.getPermissions(jwtPayload.roleId);
+        try {
+            if (!jwtPayload) {
+                permissions = await rbacService.getGuestPermissions();
+            } else {
+                permissions = await rbacService.getPermissions(
+                    jwtPayload.roleId,
+                );
+            }
+        } catch (error) {
+            return next(error);
         }
 
         const hasEnoughPermissions = requirePermissions.every((permission) =>

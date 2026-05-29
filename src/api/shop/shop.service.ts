@@ -1,3 +1,4 @@
+import { ShopStatus } from "@domain/entities/shop.entity";
 import { BaseService } from "@shared/lib/base/service";
 import { BadRequestError } from "@shared/lib/http/httpError";
 import appJwt from "@shared/lib/jwt";
@@ -71,7 +72,20 @@ export class ShopService extends BaseService {
     }
 
     async getShops(dto: GetShopsRequestDto) {
-        return this.repositories.shop.paginate({}, dto);
+        return this.repositories.shop.paginate(
+            {
+                select: {
+                    description: true,
+                    id: true,
+                    name: true,
+                    slug: true,
+                },
+                where: {
+                    status: ShopStatus.ACTIVE,
+                },
+            },
+            dto,
+        );
     }
 
     async registerShop(dto: RegisterShopRequestDto) {
@@ -155,12 +169,24 @@ export class ShopService extends BaseService {
 
     private async _getShopById(id: string) {
         return this.repositories.shop.findOne({
+            select: {
+                description: true,
+                id: true,
+                name: true,
+                slug: true,
+            },
             where: { id },
         });
     }
 
     private async _getShopBySlug(slug: string) {
         return this.repositories.shop.findOne({
+            select: {
+                description: true,
+                id: true,
+                name: true,
+                slug: true,
+            },
             where: { slug },
         });
     }

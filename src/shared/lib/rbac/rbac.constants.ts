@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-imports */
 import { ADDRESS_PERMISSIONS } from "@api/address/address.constants";
+import { CATEGORY_PERMISSIONS } from "@api/category/category.constants";
 import { IMAGE_PERMISSIONS } from "@api/image/image.constants";
 import { ROLE_PERMISSIONS } from "@api/role/role.constants";
 import {
@@ -24,6 +25,7 @@ export const RBAC_PERMISSIONS = mergePermissionMaps(
     SHOP_ADDRESS_PERMISSIONS,
     USER_PERMISSIONS,
     IMAGE_PERMISSIONS,
+    CATEGORY_PERMISSIONS,
 );
 
 export const ROLE_PERMISSIONS_CACHE_TTL_SECONDS = 60 * 60;
@@ -49,6 +51,7 @@ export const RBAC_SYSTEM_ROLES_PERMISSIONS: Record<
 > = {
     [RBAC_SYSTEM_ROLES.ADMIN]: new Set(Object.values(RBAC_PERMISSIONS)),
     [RBAC_SYSTEM_ROLES.GUEST]: new Set([
+        CATEGORY_PERMISSIONS.CATEGORY_READ,
         IMAGE_PERMISSIONS.IMAGE_CREATE_PRESIGNED_URL,
         SHOP_PERMISSIONS.SHOP_READ,
     ]),
@@ -59,10 +62,12 @@ export const RBAC_SYSTEM_ROLES_PERMISSIONS: Record<
         SHOP_PERMISSIONS.SHOP_VERIFY,
         SHOP_STAFF_PERMISSIONS.SHOP_STAFF_READ,
         ...Object.values(ADDRESS_PERMISSIONS),
+        ...Object.values(CATEGORY_PERMISSIONS),
         ...Object.values(IMAGE_PERMISSIONS),
     ]),
     [RBAC_SYSTEM_ROLES.SHOP_MODERATOR]: new Set([
         SHOP_MODERATOR_PERMISSIONS.SHOP_MODERATOR_READ,
+        ...Object.values(CATEGORY_PERMISSIONS),
         ...Object.values(IMAGE_PERMISSIONS),
         ...Object.values(SHOP_ADDRESS_PERMISSIONS),
         ...Object.values(SHOP_CATALOG_PERMISSIONS),
@@ -74,6 +79,7 @@ export const RBAC_SYSTEM_ROLES_PERMISSIONS: Record<
         SHOP_PERMISSIONS.SHOP_READ,
         SHOP_PERMISSIONS.SHOP_UPDATE,
         ...Object.values(ADDRESS_PERMISSIONS),
+        ...Object.values(CATEGORY_PERMISSIONS),
         ...Object.values(IMAGE_PERMISSIONS),
         ...Object.values(SHOP_ADDRESS_PERMISSIONS),
         ...Object.values(SHOP_CATALOG_PERMISSIONS),
@@ -82,6 +88,7 @@ export const RBAC_SYSTEM_ROLES_PERMISSIONS: Record<
         ...Object.values(SHOP_STAFF_PERMISSIONS),
     ]),
     [RBAC_SYSTEM_ROLES.SHOP_STAFF]: new Set([
+        CATEGORY_PERMISSIONS.CATEGORY_READ,
         IMAGE_PERMISSIONS.IMAGE_CREATE_PRESIGNED_URL,
         SHOP_PERMISSIONS.SHOP_READ,
         SHOP_STAFF_PERMISSIONS.SHOP_STAFF_READ,
@@ -90,6 +97,7 @@ export const RBAC_SYSTEM_ROLES_PERMISSIONS: Record<
         ...Object.values(SHOP_DISCOUNT_PERMISSIONS),
     ]),
     [RBAC_SYSTEM_ROLES.USER]: new Set([
+        CATEGORY_PERMISSIONS.CATEGORY_READ,
         IMAGE_PERMISSIONS.IMAGE_CREATE_PRESIGNED_URL,
         SHOP_CATALOG_PERMISSIONS.SHOP_CATALOG_READ,
         SHOP_DISCOUNT_PERMISSIONS.SHOP_DISCOUNT_READ,

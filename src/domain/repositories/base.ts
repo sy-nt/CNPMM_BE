@@ -126,7 +126,7 @@ export class BaseRepository<T extends ObjectLiteral> extends Base {
         return manager.update(this.repository.target, criteria, data);
     };
 
-    private _buildOrder(
+    protected _buildOrder(
         orderBy?: string,
         sort?: SortDirection,
     ): FindOptionsOrder<T> {
@@ -136,12 +136,12 @@ export class BaseRepository<T extends ObjectLiteral> extends Base {
         return { id: "DESC" } as unknown as FindOptionsOrder<T>;
     }
 
-    private async _entityManager() {
+    protected async _entityManager() {
         const queryRunner = await this._queryRunner();
         return queryRunner.manager;
     }
 
-    private async _queryRunner() {
+    protected async _queryRunner() {
         const ctx = RequestContextService.getContext();
         if (ctx.queryRunner) return ctx.queryRunner;
         const queryRunner = AppDataSource.createQueryRunner();

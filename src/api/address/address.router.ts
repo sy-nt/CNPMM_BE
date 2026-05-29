@@ -9,8 +9,9 @@ import { ADDRESS_PERMISSIONS } from "./address.constants";
 import addressController from "./address.controller";
 import {
     createAddressRequestSchema,
-    deleteAddressRequestSchema,
-    updateAddressRequestSchema,
+    deleteAddressRequestParamsSchema,
+    updateAddressRequestBodySchema,
+    updateAddressRequestParamsSchema,
 } from "./address.schema";
 
 const addressRouter = Router();
@@ -27,22 +28,23 @@ addressRouter.post(
 );
 
 addressRouter.delete(
-    "/",
+    "/:id",
     rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
-        body: deleteAddressRequestSchema,
+        params: deleteAddressRequestParamsSchema,
     }),
     rbac([ADDRESS_PERMISSIONS.ADDRESS_DELETE]),
     asyncWrapper(addressController.deleteAddress),
 );
 
 addressRouter.put(
-    "/",
+    "/:id",
     rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
-        body: updateAddressRequestSchema,
+        body: updateAddressRequestBodySchema,
+        params: updateAddressRequestParamsSchema,
     }),
     rbac([ADDRESS_PERMISSIONS.ADDRESS_UPDATE]),
     asyncWrapper(addressController.updateAddress),

@@ -5,7 +5,6 @@ import { Request } from "express";
 
 import {
     CreateAddressRequestDto,
-    DeleteAddressRequestDto,
     GetAddressesRequestDto,
     UpdateAddressRequestDto,
 } from "./address.dto";
@@ -25,10 +24,10 @@ export class AddressController {
 
     @OkResponse()
     async deleteAddress(req: Request) {
-        const dto = extractRequest<DeleteAddressRequestDto>(req, "body");
+        const dto = extractRequest<{ id: string }>(req, "params");
         const jwtPayload = RequestContextService.getJwtPayload();
         return addressService.deleteAddress({
-            ...dto,
+            id: dto.id,
             shopId: jwtPayload!.assignedShopId,
             userId: jwtPayload!.userId,
         });
@@ -47,10 +46,12 @@ export class AddressController {
 
     @OkResponse()
     async updateAddress(req: Request) {
-        const dto = extractRequest<UpdateAddressRequestDto>(req, "body");
+        const params = extractRequest<{ id: string }>(req, "params");
+        const body = extractRequest<UpdateAddressRequestDto>(req, "body");
         const jwtPayload = RequestContextService.getJwtPayload();
         return addressService.updateAddress({
-            ...dto,
+            ...body,
+            id: params.id,
             shopId: jwtPayload!.assignedShopId,
             userId: jwtPayload!.userId,
         });
