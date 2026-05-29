@@ -113,6 +113,11 @@ export class BaseRepository<T extends ObjectLiteral> extends Base {
         return this.repository.createQueryBuilder();
     };
 
+    save = async (entity: T): Promise<T> => {
+        const manager = await this._entityManager();
+        return manager.save(entity);
+    };
+
     softDelete = async (criteria: FindOptionsWhere<T>) => {
         const manager = await this._entityManager();
         return manager.softDelete(this.repository.target, criteria);

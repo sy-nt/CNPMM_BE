@@ -7,12 +7,18 @@ import categoriesRouter from "./category/categories.router";
 import categoryRouter from "./category/category.router";
 import healthCheckRouter from "./healthCheck/healthCheck.router";
 import imageRouter from "./image/image.router";
+import inventoryRouter from "./inventory/inventory.router";
+import productRouter from "./product/product.router";
+import productsRouter from "./product/products.router";
 import roleRouter from "./role/role.router";
 import rolesRouter from "./role/roles.router";
 import shopRouter from "./shop/shop.router";
 import shopsRouter from "./shop/shops.router";
+import storefrontRouter from "./storefront/storefront.router";
 import userRouter from "./user/user.router";
 import usersRouter from "./user/users.router";
+import warehouseRouter from "./warehouse/warehouse.router";
+import warehousesRouter from "./warehouse/warehouses.router";
 
 const router = Router();
 
@@ -25,9 +31,15 @@ router.use("/addresses", addressesRouter);
 router.use("/category", categoryRouter);
 router.use("/categories", categoriesRouter);
 router.use("/image", imageRouter);
+router.use("/inventory", inventoryRouter);
+router.use("/product", productRouter);
+router.use("/products", productsRouter);
 router.use("/role", roleRouter);
 router.use("/roles", rolesRouter);
 router.use("/shop", shopRouter);
 router.use("/shops", shopsRouter);
+router.use("/storefront", storefrontRouter);
+router.use("/warehouse", warehouseRouter);
+router.use("/warehouses", warehousesRouter);
 
 export default router;

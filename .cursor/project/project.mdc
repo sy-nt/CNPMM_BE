@@ -6,9 +6,10 @@ alwaysApply: true
 # Project Guidance
 
 - Express TypeScript API: `src/api`, `src/domain`, `src/shared`, `src/config`.
-- API modules under `src/api/<module>`. Mounted under `/api/v1` via `src/api/app.router.ts`: `healthCheck`, `auth`, `user`, `users`, `address`, `addresses`, `image`, `role`, `roles`, `shop`, `shops`.
+- API modules under `src/api/<module>`. Mounted under `/api/v1` via `src/api/app.router.ts`: `healthCheck`, `auth`, `user`, `users`, `address`, `addresses`, `category`, `categories`, `image`, `inventory`, `product`, `products`, `role`, `roles`, `shop`, `shops`, `storefront`, `warehouse`, `warehouses`.
 - Flow: `route → controller → service → repository`. Joi validation in routers; business logic in services extending `BaseService`; TypeORM access in repositories extending `BaseRepository`.
 - Controllers: `extractRequest<Dto>(req, 'body' | 'query' | 'params')` for input, `RequestContextService.getJwtPayload() / getTokens() / getShopId() / getRequestId()` for context, response decorators `@OkResponse()` / `@CreatedResponse()`. There is **no** `extractContext` helper.
+- MUST USE gitnexus skills to for exploring/debugging/impact analysis/refactoring project
 - **JWT-scoped identity (MANDATORY):** request bodies/queries must **never** carry `userId`, `shopId`, or `ownerId`. Controllers inject them from `RequestContextService.getJwtPayload()` (`jwtPayload.userId`, `jwtPayload.assignedShopId`). The schema must not declare these fields — Joi will then 400 any client that tries to spoof them.
   - Exception: admin endpoints that intentionally target an arbitrary record (e.g. `PATCH /shop/status` accepts `id` because only admin has `SHOP_UPDATE_STATUS`). These must be gated by an admin-only permission in `RBAC_SYSTEM_ROLES_PERMISSIONS`.
 - **Validation belongs in `*.schema.ts`:** Joi enforces shape, type, format, range, enum membership, conditional rules (e.g. per-prefix image size via `Joi.when()`). Services validate only business rules that require DB/Redis/JWT lookup (existence, uniqueness, ownership, state transitions, attempt counters).
@@ -26,4 +27,3 @@ alwaysApply: true
 - **Plans:** every plan produced by `CreatePlan` must be mirrored into `<workspace_root>/plans/<plan-slug>.plan.md` and committed. The Cursor tool writes the canonical copy under `~/.cursor/plans/<slug>_<hash>.plan.md`; copy that file into the repo (drop the random hash suffix) so plans are reviewable alongside code. The original under `~/.cursor/plans/` stays put — we mirror, not move.
 - Do not start dev servers or builds without explicit approval. Prefer `npx tsc --noEmit` and ESLint on touched files.
 - Do not add frameworks or dependencies unless verified missing and required.
-- Can use gitnexus skills to for exploring/debugging/impact analysis/refactoring project
