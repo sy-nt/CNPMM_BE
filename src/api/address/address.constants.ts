@@ -2,7 +2,7 @@ import { buildModulePermissionsMap } from "@shared/utils/role";
 
 export enum AddressError {
     ADDRESS_NOT_FOUND = "Address not found",
-    SHOP_NOT_OWNED = "Shop is not owned by the user",
+    NOT_SHOP_MEMBER = "Only users assigned to a shop can manage shop addresses",
 }
 
 export const RBAC_ADDRESS_ACTIONS = {

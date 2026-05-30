@@ -1,4 +1,4 @@
-import { CreateAddressRequestDto } from "@api/address/address.dto";
+import { AddressInputDto } from "@api/address/address.dto";
 import { ShopStatus } from "@domain/entities/shop.entity";
 import { DefaultPaginationDto } from "@shared/types";
 
@@ -11,7 +11,7 @@ export type AssignWorkerRequestDto = {
 export type GetShopsRequestDto = DefaultPaginationDto;
 
 export type RegisterShopRequestDto = {
-    addresses: CreateAddressRequestDto[];
+    addresses: AddressInputDto[];
     description?: string;
     name: string;
     ownerId: string;

@@ -50,6 +50,15 @@ export class RbacService extends BaseService {
         );
         return permissions;
     }
+
+    async isAdmin(roleId?: string): Promise<boolean> {
+        if (!roleId) return false;
+        const role = await this.repositories.role.findOne({
+            select: { name: true },
+            where: { id: roleId },
+        });
+        return role?.name === RBAC_SYSTEM_ROLES.ADMIN;
+    }
 }
 
 const rbacService = new RbacService();

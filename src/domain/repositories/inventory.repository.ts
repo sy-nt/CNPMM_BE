@@ -14,19 +14,21 @@ export class InventoryRepository extends BaseRepository<InventoryEntity> {
         skuId: string;
         warehouseId: string;
     }): Promise<number> => {
+        const delta = Math.trunc(params.delta);
         const manager = await this._entityManager();
         const qb = manager
             .createQueryBuilder()
             .update(InventoryEntity)
             .set({
-                quantity: () => `quantity + ${Math.trunc(params.delta)}`,
+                quantity: () => "quantity + :delta",
                 version: () => "version + 1",
             })
             .where("sku_id = :skuId", { skuId: params.skuId })
             .andWhere("warehouse_id = :warehouseId", {
                 warehouseId: params.warehouseId,
             })
-            .andWhere(`quantity + ${Math.trunc(params.delta)} >= 0`);
+            .andWhere("quantity + :delta >= 0")
+            .setParameter("delta", delta);
         if (params.expectedVersion !== undefined) {
             qb.andWhere("version = :version", {
                 version: params.expectedVersion,
@@ -34,6 +36,22 @@ export class InventoryRepository extends BaseRepository<InventoryEntity> {
         }
         const result = await qb.execute();
         return result.affected ?? 0;
+    };
+
+    findAvailableTotals = async (
+        skuIds: string[],
+    ): Promise<Map<string, number>> => {
+        if (skuIds.length === 0) return new Map();
+        const rows = await this.repository
+            .createQueryBuilder("i")
+            .select("i.sku_id", "skuId")
+            .addSelect("SUM(i.quantity - i.reserved_quantity)", "available")
+            .where("i.sku_id IN (:...skuIds)", { skuIds })
+            .groupBy("i.sku_id")
+            .getRawMany<{ available: null | string; skuId: string }>();
+        return new Map(
+            rows.map((row) => [row.skuId, Number(row.available ?? 0)]),
+        );
     };
 
     findBySku = async (skuId: string): Promise<InventoryEntity[]> => {

@@ -42,6 +42,22 @@ export class AddressEntity extends BaseEntityWithUUID {
     isPrimary!: boolean;
 
     @Column({
+        nullable: true,
+        precision: 10,
+        scale: 7,
+        type: "decimal",
+    })
+    latitude?: string;
+
+    @Column({
+        nullable: true,
+        precision: 10,
+        scale: 7,
+        type: "decimal",
+    })
+    longitude?: string;
+
+    @Column({
         length: 255,
         type: "varchar",
     })
