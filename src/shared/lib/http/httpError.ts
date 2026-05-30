@@ -2,6 +2,7 @@ import reasonPhrases from "./reasonPhrases";
 import statusCodes from "./statusCodes";
 
 export class HttpError extends Error {
+    readonly isHttpError = true;
     statusCode: number;
 
     constructor(
@@ -12,6 +13,11 @@ export class HttpError extends Error {
         this.statusCode = statusCode;
     }
 }
+
+export const isHttpError = (error: unknown): error is HttpError =>
+    typeof error === "object" &&
+    error !== null &&
+    (error as { isHttpError?: boolean }).isHttpError === true;
 
 export class BadRequestError extends HttpError {}
 

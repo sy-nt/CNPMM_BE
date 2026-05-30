@@ -8,3 +8,7 @@ export const GLOBAL_REDIS_KEY_PREFIX = {
     IDEMPOTENCY: "idempotency:",
     ROLE_PERMISSIONS: "role_permissions:",
 };
+
+export const GENERIC_CONFLICT_MESSAGE = "Resource already exists";
+export const GENERIC_INTERNAL_ERROR_MESSAGE = "Internal server error";
+export const MYSQL_DUP_ENTRY_CODE = "ER_DUP_ENTRY";

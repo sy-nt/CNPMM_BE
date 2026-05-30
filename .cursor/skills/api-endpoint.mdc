@@ -12,8 +12,9 @@ Use when adding routes under `src/api/<module>`.
 2. `*.controller.ts` — thin handler with `@OkResponse()` / `@CreatedResponse()`.
 3. `*.service.ts` — business logic, extends `BaseService`.
 4. `*.dto.ts`, `*.schema.ts`, `*.constants.ts` as needed.
-5. Register the router in `src/api/app.router.ts` (otherwise the route is unreachable). All current modules are mounted: `healthCheck`, `auth`, `user`, `users`, `address`, `addresses`, `image`, `role`, `roles`, `shop`, `shops`.
-6. Update `docs/postman/cnpm-be.postman_collection.json` for new/changed public routes.
+5. `*.type.ts` — internal types (intermediate maps, enriched rows, tree nodes, etc.). DTOs live in `*.dto.ts`; everything else goes here. Do **not** declare these at the top of `*.service.ts`.
+6. Register the router in `src/api/app.router.ts` (otherwise the route is unreachable). Existing mounts under `/api/v1`: `healthCheck`, `auth`, `user`, `users`, `address`, `addresses`, `cart`, `category`, `categories`, `delivery`, `discount`, `discounts`, `image`, `inventory`, `order`, `orders`, `product`, `products`, `role`, `roles`, `shop`, `shops`, `storefront`, `warehouse`, `warehouses`.
+7. Update `docs/postman/cnpm-be.postman_collection.json` for new/changed public routes.
 
 ## Router checklist (canonical order)
 

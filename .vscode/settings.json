@@ -1,6 +1,9 @@
 {
     "cSpell.words": [
+        "hgetall",
+        "hset",
         "setex",
-        "Skus"
+        "Skus",
+        "Spus"
     ]
 }

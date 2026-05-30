@@ -1,6 +1,7 @@
 import { AddressEntity } from "@domain/entities";
 import { BaseService } from "@shared/lib/base/service";
 import { BadRequestError, NotFoundError } from "@shared/lib/http/httpError";
+import { equalsIgnoreCase } from "@shared/utils/string";
 
 import {
     DELIVERY_DEFAULT_PROVIDER_CODE,
@@ -36,16 +37,16 @@ export const classifyZone = (
     origin: AddressEntity,
     destination: AddressEntity,
 ): DeliveryZoneCode => {
-    if (_diff(origin.country, destination.country)) {
+    if (!equalsIgnoreCase(origin.country, destination.country)) {
         return DeliveryZoneCode.CROSS_COUNTRY;
     }
-    if (_diff(origin.state, destination.state)) {
+    if (!equalsIgnoreCase(origin.state, destination.state)) {
         return DeliveryZoneCode.SAME_COUNTRY;
     }
-    if (_diff(origin.city, destination.city)) {
+    if (!equalsIgnoreCase(origin.city, destination.city)) {
         return DeliveryZoneCode.SAME_STATE;
     }
-    if (_diff(origin.district, destination.district)) {
+    if (!equalsIgnoreCase(origin.district, destination.district)) {
         return DeliveryZoneCode.SAME_CITY;
     }
     return DeliveryZoneCode.SAME_DISTRICT;
@@ -89,6 +90,3 @@ export class ZoneTableStrategy
 
 export const deliveryStrategyRegistry = new DeliveryStrategyRegistry();
 deliveryStrategyRegistry.register(new ZoneTableStrategy());
-
-const _diff = (a: string, b: string): boolean =>
-    a.trim().toLowerCase() !== b.trim().toLowerCase();

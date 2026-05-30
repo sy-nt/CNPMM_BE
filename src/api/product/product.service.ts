@@ -13,7 +13,7 @@ import {
 } from "@shared/lib/http/httpError";
 import { removeNil } from "@shared/utils/object";
 import slugify from "slugify";
-import { In, OptimisticLockVersionMismatchError } from "typeorm";
+import { In } from "typeorm";
 
 import { ProductError } from "./product.constants";
 import {
@@ -40,20 +40,7 @@ import {
     UpdateProductRequestDto,
     UpdateSkuRequestDto,
 } from "./product.dto";
-
-type SpuWithRelations = {
-    attributes?: Array<
-        { values?: ProductAttributeValueEntity[] } & ProductAttributeEntity
-    >;
-    skus?: Array<
-        {
-            selections?: Array<{
-                attributeId: string;
-                attributeValueId: string;
-            }>;
-        } & SkuEntity
-    >;
-} & SpuEntity;
+import { SpuWithRelations } from "./product.type";
 
 export class ProductService extends BaseService {
     async addAttribute(
@@ -511,7 +498,8 @@ export class ProductService extends BaseService {
     }
 
     private _rethrowIfOptimisticLock(error: unknown): void {
-        if (error instanceof OptimisticLockVersionMismatchError) {
+        const name = (error as { name?: string } | null)?.name;
+        if (name === "OptimisticLockVersionMismatchError") {
             throw new ConflictError(ProductError.PRODUCT_CONCURRENT_UPDATE);
         }
     }

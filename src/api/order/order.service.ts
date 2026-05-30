@@ -49,13 +49,9 @@ import {
     CartLineHydrated,
     CheckoutPreviewBundle,
     PerShopBundle,
+    PersistedBundleResult,
     WarehouseAllocation,
 } from "./order.type";
-
-interface PersistedBundleResult {
-    order: OrderEntity;
-    redemptions: { discountId: string; redeemedAmount: string }[];
-}
 
 export class OrderService extends BaseService {
     async cancelOrder(dto: CancelOrderRequestDto): Promise<OrderResponseDto> {

@@ -10,6 +10,8 @@ alwaysApply: true
 - Strict types; path aliases `@api`, `@config`, `@domain`, `@shared`.
 - `eslint-plugin-perfectionist` with `recommended-alphabetical`: imports, class members, object keys, and similar groups must be sorted alphabetically. Run ESLint after edits.
 - Cross-module import boundaries enforced by `no-restricted-imports` in `eslint.config.mjs`. The only file allowed to import API constants from shared code is `src/shared/lib/rbac/rbac.constants.ts` (escape hatch documented inline).
+- **Internal (non-DTO) types live in `<module>.type.ts`**, never declared at the top of `*.service.ts`. Examples: `EnrichedCartItem` / `HydrationMaps` (cart), `PersistedBundleResult` (order), `SpuWithRelations` (product), `CategoryTreeNode` (category). DTOs remain in `*.dto.ts` for request/response shapes; helper/intermediate shapes go to `*.type.ts`.
+- When `<module>.type.ts` needs to reference a DTO defined in `<module>.dto.ts` (which already imports from `.type.ts` for enums), use `import type { ... } from "./<module>.dto"` so the import is elided at runtime and the dependency graph stays acyclic.
 
 ## Validation and contracts
 
@@ -17,21 +19,40 @@ alwaysApply: true
 - **Validate as much as possible in the schema, not in the service.** Schemas own shape, type, format, range, enum membership, array uniqueness, and conditional rules (use `Joi.when({ switch: [...] })` for per-discriminator rules — see `image.schema.createPresignedUrlRequestSchema`). Services only validate what requires a DB/Redis/JWT lookup (existence, uniqueness, ownership, transitions, attempt counters).
 - DTO types in `*.dto.ts` as `interface` / `type`; use them in controllers and services. DTOs may carry fields that the schema does not (e.g. `userId`, `shopId`) — the controller injects them from JWT.
 - Reuse shared Joi helpers from `src/shared/schema.ts` (`email`, `uuid`, `strongPassword`, `page`, `limit`, `sort`, `positiveNumber`, ...). Always prefer `uuid` over plain `Joi.string()` for id fields.
+- **Reuse module-local Joi helpers** instead of inlining the same `.custom(...)` block in multiple schemas. Define the validator once **without** baked-in `.required()` / `.optional()` and let each call site append the modifier (see `valueWithPercentageCap` in `discount.schema.ts`, reused as `valueWithPercentageCap.required()` for create and `valueWithPercentageCap.optional()` for update).
 - **Never** declare `userId`, `shopId`, or `ownerId` in a request schema (see JWT-scoped identity rule in `architecture.mdc`).
+- **Persisted-state guards are legitimate service-layer validation** — and the *only* time it's OK to "validate again" after Joi. Joi cannot see the DB row, so partial-update flows must re-derive `effective = patch.x ?? persisted.x` and re-assert invariants (PERCENTAGE cap with persisted `valueType`, `validUntil > validFrom` merged with persisted window, target-spu rules merged with persisted `scope`, mutability windows like "discount has already started or been redeemed"). See `_assertDiscountMutable`, `_assertPercentageCap`, `_assertValidityWindowConsistent`, `_assertTargetSpusUpdatable` in `discount.service.ts`.
 
 ## Errors and responses
 
 - Throw `BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, ... from `@shared/lib/http/httpError` — never `res.status(...).json(...)` directly.
 - Module-specific error messages belong in `<module>.constants.ts` enums (`AuthError`, `ShopError`, `AddressError`, `UserError`, `ImageError`, ...).
 - Controllers use `@OkResponse()` / `@CreatedResponse()` decorators; preserve the `HttpResponse` envelope.
+- **Do not use `instanceof` for external library errors.** Duck-type on `.name` or `.code` instead, because cross-package class identity is fragile (TypeORM, jsonwebtoken, multiple module-loads, transpilation):
+    - MySQL duplicate: `isUniqueViolationError(error)` from `@shared/utils/db` (matches `error.code === MYSQL_DUP_ENTRY_CODE`).
+    - TypeORM optimistic-lock: `(error as { name?: string })?.name === "OptimisticLockVersionMismatchError"`.
+    - JWT expiry: `(error as { name?: string })?.name === "TokenExpiredError"`.
+- For **our own** `HttpError`, use the `isHttpError(error)` typeguard from `@shared/lib/http/httpError`. It is backed by a `readonly isHttpError = true` marker on the class, so the check survives multiple class identities. Subclasses (`BadRequestError`, ...) inherit the marker automatically.
+- `instanceof Error` for the built-in `Error` is fine (one global identity).
 
 ## Constants (required)
 
 - No inline magic numbers, TTLs, Redis flags, role/permission strings, bcrypt rounds, or regex patterns in services or routers.
 - Module-specific → `<module>.constants.ts`.
 - Shared security/password → `src/shared/constants/security.constants.ts` (`BCRYPT_SALT_ROUNDS`) + `src/shared/utils/password.ts` (`hashPassword`, `verifyPassword`).
-- Global Redis flags/keys → `src/shared/constants/index.ts` (`REDIS_TRUTHY_VALUE`, `REDIS_FALSY_VALUE`, `GLOBAL_REDIS_KEY_PREFIX`).
+- Global Redis flags/keys, generic error messages, and external-system codes → `src/shared/constants/index.ts` (`REDIS_TRUTHY_VALUE`, `REDIS_FALSY_VALUE`, `GLOBAL_REDIS_KEY_PREFIX`, `GENERIC_CONFLICT_MESSAGE`, `GENERIC_INTERNAL_ERROR_MESSAGE`, `MYSQL_DUP_ENTRY_CODE`).
 - Roles/permissions → `src/shared/lib/rbac/rbac.constants.ts` (`RBAC_PERMISSIONS`, `RBAC_SYSTEM_ROLES`, `RBAC_SYSTEM_ROLES_PERMISSIONS`, `PermissionName`, `RBACSystemRoleName`, `REDIS_KEY_PREFIX.ROLE_PERMISSIONS`). Per-module permission maps are built in the module via `buildModulePermissionsMap(MODULES, ACTIONS)`.
+- **Reusable column projections** (`select: { ... } as const` used in more than one service method) live in `<module>.constants.ts` (e.g. `ADDRESS_PUBLIC_SELECT`). Preserve `as const` so TypeORM's `select` type still narrows.
+
+## Shared utilities (reuse before reimplementing)
+
+- `@shared/utils/object` — `removeNil` for partial-update DTOs.
+- `@shared/utils/password` — `hashPassword`, `verifyPassword`.
+- `@shared/utils/string` — `equalsIgnoreCase(a, b)`, `isUUIDv7`, `upperCaseToCamelCase`, `camelCaseToWords`. Never re-implement case-insensitive comparisons or UUID checks inline.
+- `@shared/utils/db` — `isUniqueViolationError(error)` for MySQL `ER_DUP_ENTRY` race handling.
+- `@shared/utils/role` — `buildModulePermissionsMap`, `mergePermissionMaps`.
+- `@shared/utils/sleep` — async sleep.
+- Before adding a new util, grep `src/shared/utils/*` and check for an existing helper; before adding a new constant, grep `src/shared/constants/*`.
 
 ## Repositories
 

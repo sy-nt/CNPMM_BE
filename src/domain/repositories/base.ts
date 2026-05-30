@@ -46,26 +46,32 @@ export class BaseRepository<T extends ObjectLiteral> extends Base {
     };
 
     find = async (options: FindManyOptions<T>): Promise<T[]> => {
-        return this.repository.find(options);
+        const manager = await this._entityManager();
+        return manager.find(this.repository.target, options);
     };
 
     findOne = async (options: FindOneOptions<T>): Promise<null | T> => {
-        return this.repository.findOne(options);
+        const manager = await this._entityManager();
+        return manager.findOne(this.repository.target, options);
     };
 
     paginate = async (
         options: Omit<FindManyOptions<T>, "skip" | "take">,
         paginateOption: DefaultPaginationDto,
     ) => {
-        const [items, total] = await this.repository.findAndCount({
-            ...options,
-            order: this._buildOrder(
-                paginateOption.orderBy,
-                paginateOption.sort,
-            ),
-            skip: (paginateOption.page - 1) * paginateOption.limit,
-            take: paginateOption.limit,
-        });
+        const manager = await this._entityManager();
+        const [items, total] = await manager.findAndCount(
+            this.repository.target,
+            {
+                ...options,
+                order: this._buildOrder(
+                    paginateOption.orderBy,
+                    paginateOption.sort,
+                ),
+                skip: (paginateOption.page - 1) * paginateOption.limit,
+                take: paginateOption.limit,
+            },
+        );
 
         const totalPage = Math.ceil(total / paginateOption.limit);
         return {
@@ -90,27 +96,27 @@ export class BaseRepository<T extends ObjectLiteral> extends Base {
                       : LessThan(paginateOption.lastId),
               }
             : {};
-        const [items, total] = await this.repository.findAndCount({
-            ...options,
-            order: {
-                id: isAsc ? "ASC" : "DESC",
-            } as unknown as FindOptionsOrder<T>,
-            take: paginateOption.limit,
-            where: {
-                ...options.where,
-                ...cursor,
-            } as FindOptionsWhere<T>,
-        });
+        const manager = await this._entityManager();
+        const [items, total] = await manager.findAndCount(
+            this.repository.target,
+            {
+                ...options,
+                order: {
+                    id: isAsc ? "ASC" : "DESC",
+                } as unknown as FindOptionsOrder<T>,
+                take: paginateOption.limit,
+                where: {
+                    ...options.where,
+                    ...cursor,
+                } as FindOptionsWhere<T>,
+            },
+        );
 
         return {
             hasNextPage: total > items.length,
             items,
             lastId: items[items.length - 1]?.id as string,
         };
-    };
-
-    queryBuilder = () => {
-        return this.repository.createQueryBuilder();
     };
 
     save = async (entity: T): Promise<T> => {

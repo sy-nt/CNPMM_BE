@@ -8,6 +8,7 @@ import {
 import { GLOBAL_REDIS_KEY_PREFIX } from "@shared/constants";
 import { BaseService } from "@shared/lib/base/service";
 import { BadRequestError, NotFoundError } from "@shared/lib/http/httpError";
+import { isUniqueViolationError } from "@shared/utils/db";
 import { In } from "typeorm";
 
 import {
@@ -20,30 +21,17 @@ import {
     AddItemRequestDto,
     CartItemResponseDto,
     CartItemShopSummaryDto,
-    CartItemSkuSummaryDto,
     CartResponseDto,
     GetCartRequestDto,
     RemoveItemRequestDto,
     UpdateItemRequestDto,
 } from "./cart.dto";
-import { CartItemRecord, CartItemUnavailableReason } from "./cart.type";
-
-type EnrichedCartItem = {
-    isAvailable: boolean;
-    quantity: number;
-    reason?: CartItemUnavailableReason;
-    rowId?: string;
-    sku: CartItemSkuSummaryDto;
-    skuId: string;
-    subtotal: string;
-};
-
-type HydrationMaps = {
-    inventoryTotals: Map<string, number>;
-    shopById: Map<string, ShopEntity>;
-    skuById: Map<string, SkuEntity>;
-    spuById: Map<string, SpuEntity>;
-};
+import {
+    CartItemRecord,
+    CartItemUnavailableReason,
+    EnrichedCartItem,
+    HydrationMaps,
+} from "./cart.type";
 
 export class CartService extends BaseService {
     async addItem(dto: AddItemRequestDto): Promise<CartResponseDto> {
@@ -116,6 +104,7 @@ export class CartService extends BaseService {
         if (!cart) {
             return this.getCart({ userId: dto.userId });
         }
+        await this.repositories.cart.findOneByIdForUpdate(cart.id);
         const existing = await this.repositories.cartItem.findOne({
             select: { id: true },
             where: { cartId: cart.id, skuId: dto.skuId },
@@ -137,6 +126,7 @@ export class CartService extends BaseService {
         if (!cart) {
             throw new NotFoundError(CartError.CART_ITEM_NOT_FOUND);
         }
+        await this.repositories.cart.findOneByIdForUpdate(cart.id);
         const existing = await this.repositories.cartItem.findOne({
             where: { cartId: cart.id, skuId: dto.skuId },
         });
@@ -355,7 +345,16 @@ export class CartService extends BaseService {
             where: { userId },
         });
         if (existing) return existing;
-        return this.repositories.cart.create({ userId });
+        try {
+            return await this.repositories.cart.create({ userId });
+        } catch (error) {
+            if (!isUniqueViolationError(error)) throw error;
+            const concurrent = await this.repositories.cart.findOne({
+                where: { userId },
+            });
+            if (!concurrent) throw error;
+            return concurrent;
+        }
     }
 
     private async _loadCartItems(

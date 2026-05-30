@@ -249,18 +249,14 @@ export class DiscountService extends BaseService {
         const discount = await this._getDiscountOrThrow(dto.id);
         const isAdmin = await rbacService.isAdmin(dto.callerRoleId);
         this._assertDiscountAccess(discount, dto.callerShopId, isAdmin);
+        this._assertDiscountMutable(discount, dto);
         if (dto.code && dto.code !== discount.code) {
             await this._ensureCodeUnique(dto.code);
         }
         if (dto.rules) this._validateRules(dto.rules);
-        if (dto.targetSpuIds && discount.scope === DiscountScope.SHOP) {
-            if (dto.targetSpuIds.length > 0) {
-                await this._assertShopOwnsTargetSpus(
-                    discount.shopId!,
-                    dto.targetSpuIds,
-                );
-            }
-        }
+        this._assertPercentageCap(discount, dto);
+        this._assertValidityWindowConsistent(discount, dto);
+        await this._assertTargetSpusUpdatable(discount, dto.targetSpuIds);
         const { callerRoleId, callerShopId, id, targetSpuIds, ...patch } = dto;
         void callerRoleId;
         void callerShopId;
@@ -302,6 +298,43 @@ export class DiscountService extends BaseService {
         throw new ForbiddenError(DiscountError.DISCOUNT_FORBIDDEN);
     }
 
+    private _assertDiscountMutable(
+        discount: DiscountEntity,
+        dto: UpdateDiscountRequestDto,
+    ): void {
+        const now = new Date();
+        const started = !!discount.validFrom && discount.validFrom <= now;
+        const used = discount.usedCount > 0;
+        if (!started && !used) return;
+        const reservedKeys = new Set([
+            "callerRoleId",
+            "callerShopId",
+            "id",
+            "isActive",
+        ]);
+        const mutating = Object.entries(dto).some(
+            ([key, value]) => value !== undefined && !reservedKeys.has(key),
+        );
+        if (mutating) {
+            throw new BadRequestError(DiscountError.DISCOUNT_LOCKED);
+        }
+    }
+
+    private _assertPercentageCap(
+        discount: DiscountEntity,
+        dto: UpdateDiscountRequestDto,
+    ): void {
+        if (dto.value === undefined && dto.valueType === undefined) return;
+        const effectiveValueType = dto.valueType ?? discount.valueType;
+        const effectiveValue = dto.value ?? discount.value;
+        if (
+            effectiveValueType === DiscountValueType.PERCENTAGE &&
+            Number(effectiveValue) > 100
+        ) {
+            throw new BadRequestError(DiscountError.PERCENTAGE_CAP_EXCEEDED);
+        }
+    }
+
     private _assertScopeTypeCombo(
         scope: DiscountScope,
         type: DiscountType,
@@ -325,6 +358,39 @@ export class DiscountService extends BaseService {
         const mismatch = rows.some((row) => row.shopId !== shopId);
         if (mismatch) {
             throw new BadRequestError(DiscountError.INVALID_TARGET_SPUS);
+        }
+    }
+
+    private async _assertTargetSpusUpdatable(
+        discount: DiscountEntity,
+        targetSpuIds: string[] | undefined,
+    ): Promise<void> {
+        if (targetSpuIds === undefined) return;
+        if (discount.scope === DiscountScope.GLOBAL) {
+            throw new BadRequestError(
+                DiscountError.TARGET_SPUS_FORBIDDEN_FOR_GLOBAL_SCOPE,
+            );
+        }
+        if (targetSpuIds.length > 0 && discount.shopId) {
+            await this._assertShopOwnsTargetSpus(discount.shopId, targetSpuIds);
+        }
+    }
+
+    private _assertValidityWindowConsistent(
+        discount: DiscountEntity,
+        dto: UpdateDiscountRequestDto,
+    ): void {
+        if (dto.validFrom === undefined && dto.validUntil === undefined) return;
+        const effectiveFrom =
+            dto.validFrom === undefined ? discount.validFrom : dto.validFrom;
+        const effectiveUntil =
+            dto.validUntil === undefined ? discount.validUntil : dto.validUntil;
+        if (
+            effectiveFrom &&
+            effectiveUntil &&
+            effectiveUntil <= effectiveFrom
+        ) {
+            throw new BadRequestError(DiscountError.INVALID_VALIDITY_WINDOW);
         }
     }
 

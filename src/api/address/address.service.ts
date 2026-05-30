@@ -3,7 +3,7 @@ import { NotFoundError } from "@shared/lib/http/httpError";
 import { removeNil } from "@shared/utils/object";
 import { IsNull } from "typeorm";
 
-import { AddressError } from "./address.constants";
+import { ADDRESS_PUBLIC_SELECT, AddressError } from "./address.constants";
 import {
     CreatePersonalAddressRequestDto,
     CreateShopAddressRequestDto,
@@ -15,19 +15,6 @@ import {
     UpdatePersonalAddressRequestDto,
     UpdateShopAddressRequestDto,
 } from "./address.dto";
-
-const addressSelect = {
-    addressLine: true,
-    city: true,
-    country: true,
-    district: true,
-    id: true,
-    isPrimary: true,
-    latitude: true,
-    longitude: true,
-    name: true,
-    state: true,
-} as const;
 
 export class AddressService extends BaseService {
     async createPersonalAddress(
@@ -74,7 +61,7 @@ export class AddressService extends BaseService {
     async deletePersonalAddress(
         dto: DeletePersonalAddressRequestDto,
     ): Promise<void> {
-        const result = await this.repositories.address.delete({
+        const result = await this.repositories.address.softDelete({
             id: dto.id,
             shopId: IsNull(),
             userId: dto.userId,
@@ -85,7 +72,7 @@ export class AddressService extends BaseService {
     }
 
     async deleteShopAddress(dto: DeleteShopAddressRequestDto): Promise<void> {
-        const result = await this.repositories.address.delete({
+        const result = await this.repositories.address.softDelete({
             id: dto.id,
             shopId: dto.shopId,
         });
@@ -98,7 +85,7 @@ export class AddressService extends BaseService {
         dto: GetPersonalAddressesRequestDto,
     ): Promise<ListAddressesResponseDto> {
         return this.repositories.address.find({
-            select: addressSelect,
+            select: ADDRESS_PUBLIC_SELECT,
             where: { shopId: IsNull(), userId: dto.userId },
         });
     }
@@ -107,7 +94,7 @@ export class AddressService extends BaseService {
         dto: GetShopAddressesRequestDto,
     ): Promise<ListAddressesResponseDto> {
         return this.repositories.address.find({
-            select: addressSelect,
+            select: ADDRESS_PUBLIC_SELECT,
             where: { shopId: dto.shopId },
         });
     }

@@ -52,6 +52,46 @@ Use when adding or changing database writes.
 
 - Add EXISTS / aggregate / multi-row checks as methods on the concrete repository class (see `ShopRepository.findSlugsByBase`) — services should not build query builders inline.
 
+## Concurrency (pessimistic row locks)
+
+- For any read-modify-write on a contested aggregate (cart / inventory / discount / order), acquire a pessimistic write lock on the aggregate row **before** the mutation. The canonical helper is `findOneByIdForUpdate(id)` colocated with the repository class — see `CartRepository.findOneByIdForUpdate`:
+
+```ts
+findOneByIdForUpdate = async (id: string): Promise<CartEntity | null> => {
+    const manager = await this._entityManager();
+    return manager
+        .createQueryBuilder(CartEntity, "c")
+        .setLock("pessimistic_write")
+        .where("c.id = :id", { id })
+        .getOne();
+};
+```
+
+- The lock travels on the contextual `QueryRunner`, so it is released automatically when `transactionMiddleware` commits or rolls back.
+- All cart write paths (`addItem`, `updateItem`, `removeItem`) acquire this lock. Add a similar helper to the relevant repository when you introduce a new mutation path on a contested aggregate.
+
+## Soft delete vs hard delete
+
+- Entities extending `BaseEntity` have `@DeleteDateColumn deletedAt` plus a `deleted_at` column in their migration (e.g. `addresses`). Always use `repository.softDelete(criteria)` when other rows hold a FK to the entity (e.g. `orders.destinationAddressId → addresses.id`). Hard-deleting silently breaks order history.
+- TypeORM's default `find` / `findOne` already excludes soft-deleted rows, so application logic is unchanged.
+
+## Get-or-create races
+
+- For `findOne` + `create` patterns where two parallel requests could both miss and both attempt to insert under a unique constraint, catch the unique-violation and re-`findOne`:
+
+```ts
+try {
+    return await this.repositories.cart.create({ userId });
+} catch (error) {
+    if (!isUniqueViolationError(error)) throw error;
+    const concurrent = await this.repositories.cart.findOne({ where: { userId } });
+    if (!concurrent) throw error;
+    return concurrent;
+}
+```
+
+- Use `isUniqueViolationError` from `@shared/utils/db`. Do **not** `instanceof QueryFailedError` — see `style.mdc` "Errors and responses".
+
 ## Verify
 
 - `npx tsc --noEmit` on touched files.

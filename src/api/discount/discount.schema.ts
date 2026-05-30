@@ -49,7 +49,6 @@ const rulesSchema = Joi.array()
 const targetSpuIdsSchema = Joi.array().items(uuid.required()).unique();
 
 const valueWithPercentageCap = decimalString
-    .required()
     .custom((value, helpers) => {
         const parent = helpers.state.ancestors[0] as {
             valueType?: DiscountValueType;
@@ -77,7 +76,7 @@ const baseDiscountFields = {
     rules: rulesSchema,
     validFrom: Joi.date().optional(),
     validUntil: Joi.date().greater(Joi.ref("validFrom")).optional(),
-    value: valueWithPercentageCap,
+    value: valueWithPercentageCap.required(),
     valueType: Joi.string()
         .valid(...Object.values(DiscountValueType))
         .required(),
@@ -156,23 +155,7 @@ export const updateDiscountRequestBodySchema = Joi.object({
     targetSpuIds: targetSpuIdsSchema.optional(),
     validFrom: Joi.date().allow(null).optional(),
     validUntil: Joi.date().allow(null).optional(),
-    value: decimalString
-        .optional()
-        .custom((value, helpers) => {
-            const parent = helpers.state.ancestors[0] as {
-                valueType?: DiscountValueType;
-            };
-            if (
-                parent?.valueType === DiscountValueType.PERCENTAGE &&
-                Number(value) > 100
-            ) {
-                return helpers.error("any.invalid");
-            }
-            return value;
-        }, "percentage upper bound")
-        .messages({
-            "any.invalid": "value must be <= 100 when valueType is percentage",
-        }),
+    value: valueWithPercentageCap.optional(),
     valueType: Joi.string()
         .valid(...Object.values(DiscountValueType))
         .optional(),

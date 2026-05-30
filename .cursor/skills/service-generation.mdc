@@ -16,11 +16,12 @@ Use when adding or changing logic in `src/api/<module>/*.service.ts`.
 
 - The Joi schema in `*.schema.ts` already enforced **shape, type, format, range, enum, conditional** rules before your service ran. Do **not** re-validate the same things in the service.
 - Service validation is reserved for checks that need an external lookup:
-  - **Existence:** target row exists (`USER_NOT_FOUND`, `ROLE_NOT_FOUND`, `SHOP_NOT_FOUND`).
-  - **Uniqueness:** no duplicate row (`USER_ALREADY_EXISTS`, `SHOP_ALREADY_EXISTS`, `ROLE_ALREADY_EXISTS`).
-  - **Ownership:** the caller actually owns the target (`SHOP_NOT_OWNED`, soft-defensive `_ensureShopOwnership` against stale JWTs).
-  - **State transitions:** `SHOP_STATUS_TRANSITIONS[shop.status].includes(next)`.
-  - **Attempt counters:** Redis-backed throttles (`USER_LOGIN_BLOCKED`, `OTP_TOO_MANY_ATTEMPTS`).
+    - **Existence:** target row exists (`USER_NOT_FOUND`, `ROLE_NOT_FOUND`, `SHOP_NOT_FOUND`).
+    - **Uniqueness:** no duplicate row (`USER_ALREADY_EXISTS`, `SHOP_ALREADY_EXISTS`, `ROLE_ALREADY_EXISTS`).
+    - **Ownership:** the caller actually owns the target (`SHOP_NOT_OWNED`, soft-defensive `_ensureShopOwnership` against stale JWTs).
+    - **State transitions:** `SHOP_STATUS_TRANSITIONS[shop.status].includes(next)`, plus mutability windows like "discount has already started / been redeemed" (`_assertDiscountMutable`).
+    - **Attempt counters:** Redis-backed throttles (`USER_LOGIN_BLOCKED`, `OTP_TOO_MANY_ATTEMPTS`).
+    - **Persisted-state guards on partial updates:** if a Joi cross-field rule (PERCENTAGE cap, `validUntil > validFrom`, "targetSpuIds forbidden on GLOBAL scope") only fires when both fields are in the request body, the service must merge `effective = patch.x ?? persisted.x` and re-check (see `_assertPercentageCap` / `_assertValidityWindowConsistent` / `_assertTargetSpusUpdatable` in `discount.service.ts`). Joi cannot see the persisted row.
 - If you find yourself re-implementing a shape check inside the service, move it into the schema instead (`Joi.when({ switch: [...] })` covers most "field depends on another field" cases — see `image.schema.createPresignedUrlRequestSchema`).
 - Never accept `userId`, `shopId`, or `ownerId` in the schema. Controllers inject them from the JWT — services receive the DTO already populated.
 
@@ -30,6 +31,7 @@ Use when adding or changing logic in `src/api/<module>/*.service.ts`.
 2. Keep controllers thin; all business rules live in the service.
 3. Export a singleton: `const xService = new XService(); export default xService;`.
 4. Method style: prefer `async method(...) { ... }` for new code (matches `RoleService`, `AddressService`, `ShopService`, `ImageService`). `AuthService` and `UserService` use arrow properties; do not mix styles within one file.
+5. Internal types (rows enriched with relations, intermediate maps, per-bundle results, tree nodes) live in `<module>.type.ts` — never inline at the top of the service file. DTOs stay in `*.dto.ts`. When the type file needs to reference a DTO, use `import type { ... } from "./<module>.dto"` to keep the runtime graph acyclic.
 
 ## Import rules
 
@@ -53,6 +55,16 @@ Use when adding or changing logic in `src/api/<module>/*.service.ts`.
 4. After mutating a role's permissions, invalidate the Redis cache key `role_permissions:<roleId>` (see `RoleService.deleteRole` / `updateRole`).
 5. Use `Promise.all` for independent reads when safe.
 6. Avoid fetching the full entity when `select: { id: true }` or an EXISTS query suffices.
+7. **Soft-delete entities that extend `BaseEntity`** (they all have `@DeleteDateColumn deletedAt`). Use `repository.softDelete(criteria)` — never `delete(criteria)` — when other tables hold a FK to the row (e.g. `orders.destinationAddressId → addresses.id`). Hard-deletes break history and FK integrity.
+
+## Concurrency on per-row mutations
+
+- Mutating service paths that race on the same aggregate (cart, inventory, discount, order) must acquire a pessimistic row lock **before** the read-modify-write step. Pattern:
+    1. `findOne({ select: { id: true }, where: { ... } })` to resolve the aggregate id.
+    2. `repositories.<aggregate>.findOneByIdForUpdate(id)` — a `setLock("pessimistic_write")` helper colocated with the repository class.
+    3. Re-read child rows / perform the mutation. The lock is released when the per-request transaction commits or rolls back.
+- All cart mutations (`addItem`, `updateItem`, `removeItem`) lock the cart row via `CartRepository.findOneByIdForUpdate`. Add an analogous helper to the relevant repository when you introduce a new mutation path.
+- For unique-constraint races on `create` (e.g. first-time `_getOrCreateCart`), catch the dup error with `isUniqueViolationError` from `@shared/utils/db` and re-`findOne`. Don't `instanceof QueryFailedError`.
 
 ## Shop-specific
 

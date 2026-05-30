@@ -61,7 +61,8 @@ export class Jwt {
             ) as JwtPayload;
             return { payload, valid: true };
         } catch (error) {
-            if (error instanceof jwtLib.TokenExpiredError) {
+            const name = (error as { name?: string } | null)?.name;
+            if (name === "TokenExpiredError") {
                 return { reason: "expired", valid: false };
             }
             return { reason: "invalid", valid: false };

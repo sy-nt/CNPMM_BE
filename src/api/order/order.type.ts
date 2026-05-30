@@ -1,3 +1,5 @@
+import type { OrderEntity } from "@domain/entities";
+
 export interface AppliedDiscount {
     amount: string;
     code?: string;
@@ -37,6 +39,11 @@ export interface PerShopBundle {
     items: CartLineHydrated[];
     itemsSubtotal: string;
     shopId: string;
+}
+
+export interface PersistedBundleResult {
+    order: OrderEntity;
+    redemptions: { discountId: string; redeemedAmount: string }[];
 }
 
 export interface WarehouseAllocation {
