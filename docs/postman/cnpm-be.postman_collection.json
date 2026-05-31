@@ -1675,10 +1675,39 @@
                     "response": []
                 },
                 {
-                    "name": "List Permissions",
+                    "name": "List System Permissions",
                     "request": {
                         "method": "GET",
                         "header": [],
+                        "description": "Returns every permission row in the DB (system-wide catalog). Requires `ROLE_READ`. Moved from `/roles/permissions` — that URL now returns the caller's own role+permissions.",
+                        "url": {
+                            "raw": "{{baseUrl}}/roles/permissions/system",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["roles", "permissions", "system"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get My Role",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "description": "Returns the caller's role + permissions, resolved from `jwtPayload.roleId`. No RBAC — available to any authenticated user. Useful for the client to know what the current session can do.",
+                        "url": {
+                            "raw": "{{baseUrl}}/role/",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["role", ""]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get My Role (Permissions Endpoint)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "description": "Same response as `GET /role/` (caller's role + permissions) but exposed under the plural collection and gated by `ROLE_READ`. Provided for role-management UIs that already hold `ROLE_READ`.",
                         "url": {
                             "raw": "{{baseUrl}}/roles/permissions",
                             "host": ["{{baseUrl}}"],
@@ -1692,6 +1721,7 @@
                     "request": {
                         "method": "GET",
                         "header": [],
+                        "description": "Fetch a role by id (with permissions). Caller needs any of `ROLE_READ`, `ROLE_UPDATE`, or `ROLE_DELETE` — the update/delete flows pre-load the role from the same endpoint.",
                         "url": {
                             "raw": "{{baseUrl}}/role/{{roleId}}",
                             "host": ["{{baseUrl}}"],

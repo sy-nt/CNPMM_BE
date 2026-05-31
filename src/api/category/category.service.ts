@@ -71,6 +71,7 @@ export class CategoryService extends BaseService {
             {
                 select: {
                     description: true,
+                    iconUrl: true,
                     id: true,
                     name: true,
                     slug: true,

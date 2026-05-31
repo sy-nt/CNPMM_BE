@@ -18,13 +18,24 @@ import {
 const roleRouter = Router();
 
 roleRouter.get(
+    "/",
+    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    asyncWrapper(roleController.getUserPermissions),
+);
+
+roleRouter.get(
     "/:id",
     rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         params: getRoleRequestParamsSchema,
     }),
-    rbac([ROLE_PERMISSIONS.ROLE_READ]),
+    rbac([
+        ROLE_PERMISSIONS.ROLE_READ,
+        ROLE_PERMISSIONS.ROLE_DELETE,
+        ROLE_PERMISSIONS.ROLE_UPDATE,
+    ]),
     asyncWrapper(roleController.getRole),
 );
 

@@ -23,7 +23,7 @@ rolesRouter.get(
 );
 
 rolesRouter.get(
-    "/permissions",
+    "/permissions/system",
     rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     rbac([ROLE_PERMISSIONS.ROLE_READ]),

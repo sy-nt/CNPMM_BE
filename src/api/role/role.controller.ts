@@ -1,5 +1,6 @@
 import { CreatedResponse, OkResponse } from "@shared/decorators/response";
 import { extractRequest } from "@shared/helper/request";
+import { RequestContextService } from "@shared/lib/context";
 import { Request } from "express";
 
 import {
@@ -38,6 +39,12 @@ export class RoleController {
     async getRoles(req: Request) {
         const dto = extractRequest<GetRolesRequestDto>(req, "query");
         return roleService.getRoles(dto);
+    }
+
+    @OkResponse()
+    async getUserPermissions() {
+        const jwtPayload = RequestContextService.getJwtPayload();
+        return roleService.getRole(jwtPayload!.roleId);
     }
 
     @OkResponse()
