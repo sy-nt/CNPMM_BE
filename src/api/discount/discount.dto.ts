@@ -6,6 +6,11 @@ import {
 } from "@domain/entities";
 import { DefaultPaginationDto, DefaultPaginationResponse } from "@shared/types";
 
+export interface ClaimDiscountRequestDto {
+    callerUserId: string;
+    id: string;
+}
+
 export interface CreateGlobalDiscountRequestDto {
     code?: string;
     description?: string;
@@ -48,6 +53,28 @@ export interface DeleteDiscountRequestDto {
     id: string;
 }
 
+export interface DiscountClaimResponseDto {
+    claimedAt: Date;
+    discount: DiscountClaimSummaryDto;
+    id: string;
+    userId: string;
+}
+
+export interface DiscountClaimSummaryDto {
+    code?: string;
+    description?: string;
+    discountType: DiscountType;
+    id: string;
+    maxDiscountAmount?: string;
+    name: string;
+    scope: DiscountScope;
+    shopId?: string;
+    validFrom?: Date;
+    validUntil?: Date;
+    value: string;
+    valueType: DiscountValueType;
+}
+
 export interface DiscountResponseDto {
     code?: string;
     description?: string;
@@ -86,6 +113,13 @@ export interface GetDiscountsRequestDto extends DefaultPaginationDto {
 
 export type GetDiscountsResponseDto =
     DefaultPaginationResponse<DiscountResponseDto>;
+
+export interface GetMyClaimsRequestDto extends DefaultPaginationDto {
+    callerUserId: string;
+}
+
+export type GetMyClaimsResponseDto =
+    DefaultPaginationResponse<DiscountClaimResponseDto>;
 
 export interface UpdateDiscountRequestDto {
     callerRoleId?: string;

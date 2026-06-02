@@ -64,7 +64,7 @@ export const updateProductRequestBodySchema = Joi.object({
 }).min(1);
 
 export const productIdParamsSchema = Joi.object({
-    id: uuid.required(),
+    idOrSlug: Joi.string().trim().min(1).max(255).required(),
 });
 
 export const getProductsRequestQuerySchema = Joi.object({

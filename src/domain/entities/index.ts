@@ -8,6 +8,7 @@ export * from "./deliveryMethod.entity";
 export * from "./deliveryZone.entity";
 export * from "./deliveryZoneRate.entity";
 export * from "./discount.entity";
+export * from "./discountClaim.entity";
 export * from "./discountRedemption.entity";
 export * from "./discountTargetSpu.entity";
 export * from "./image.entity";

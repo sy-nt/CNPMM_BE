@@ -16,6 +16,7 @@ import { ShopEntity } from "./shop.entity";
     name: "spus",
 })
 @Index(["categoryId"])
+@Index(["name", "description"], { fulltext: true })
 @Index(["shopId"])
 @Unique(["shopId", "slug"])
 export class SpuEntity extends BaseEntityWithUUID {
@@ -80,6 +81,13 @@ export class SpuEntity extends BaseEntityWithUUID {
         type: "varchar",
     })
     slug!: string;
+
+    @Column({
+        default: 0,
+        name: "sold_count",
+        type: "int",
+    })
+    soldCount!: number;
 
     @VersionColumn({
         default: 1,

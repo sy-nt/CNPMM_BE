@@ -14,7 +14,7 @@ const productsRouter = Router();
 productsRouter.get(
     "/",
     rateLimit({ limit: 30, scope: "route", windowSeconds: 60 }),
-    authenticator("access"),
+    authenticator("access-optional"),
     validator({ query: getProductsRequestQuerySchema }),
     rbac([PRODUCT_PERMISSIONS.PRODUCT_READ]),
     asyncWrapper(productController.getProducts),

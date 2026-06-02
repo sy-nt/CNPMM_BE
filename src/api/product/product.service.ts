@@ -1,4 +1,5 @@
 import {
+    CategoryEntity,
     ProductAttributeEntity,
     ProductAttributeValueEntity,
     SkuEntity,
@@ -30,6 +31,7 @@ import {
     GetProductsResponseDto,
     ProductAttributeResponseDto,
     ProductAttributeValueResponseDto,
+    ProductCategoryDto,
     ProductDetailDto,
     ProductSkuResponseDto,
     ProductSummaryDto,
@@ -111,7 +113,7 @@ export class ProductService extends BaseService {
             dto.attributes,
         );
         await this._persistSkus(spu.id, dto.skus, attributeMap);
-        return this.getProduct({ id: spu.id });
+        return this.getProduct({ idOrSlug: spu.id });
     }
 
     async deleteAttribute(dto: DeleteAttributeRequestDto): Promise<void> {
@@ -163,19 +165,23 @@ export class ProductService extends BaseService {
 
     async getProduct(dto: GetProductRequestDto): Promise<ProductDetailDto> {
         const spu = (await this.repositories.spu.findDetailWithRelations(
-            dto.id,
+            dto.idOrSlug,
         )) as null | SpuWithRelations;
         if (!spu) throw new NotFoundError(ProductError.PRODUCT_NOT_FOUND);
-        return this._toProductDetail(spu);
+        const skuIds = (spu.skus ?? []).map((sku) => sku.id);
+        const quantityBySkuId =
+            await this.repositories.inventory.findAvailableTotals(skuIds);
+        return this._toProductDetail(spu, quantityBySkuId);
     }
 
     async getProducts(
         dto: GetProductsRequestDto,
     ): Promise<GetProductsResponseDto> {
         const { categoryId, isActive, search, shopId, ...pagination } = dto;
+        const categoryIds = await this._expandCategoryFilter(categoryId);
         const result = await this.repositories.spu.findSummariesPaginated(
             {
-                categoryIds: categoryId ? [categoryId] : undefined,
+                categoryIds,
                 isActive,
                 search,
                 shopId,
@@ -188,12 +194,12 @@ export class ProductService extends BaseService {
                 (row): ProductSummaryDto => ({
                     categoryId: row.categoryId,
                     id: row.id,
-                    isActive: row.isActive,
                     mainImageKey: row.mainImageKey ?? undefined,
                     name: row.name,
                     price: row.price,
                     shopId: row.shopId,
                     slug: row.slug,
+                    soldCount: row.soldCount,
                 }),
             ),
         };
@@ -270,7 +276,7 @@ export class ProductService extends BaseService {
             this._rethrowIfOptimisticLock(error);
             throw error;
         }
-        return this.getProduct({ id: spu.id });
+        return this.getProduct({ idOrSlug: spu.id });
     }
 
     async updateSku(dto: UpdateSkuRequestDto): Promise<ProductSkuResponseDto> {
@@ -292,10 +298,15 @@ export class ProductService extends BaseService {
             this._rethrowIfOptimisticLock(error);
             throw error;
         }
-        const selections = await this.repositories.skuAttributeValue.findBySku(
-            sku.id,
+        const [selections, quantityBySkuId] = await Promise.all([
+            this.repositories.skuAttributeValue.findBySku(sku.id),
+            this.repositories.inventory.findAvailableTotals([sku.id]),
+        ]);
+        return this._toSkuResponse(
+            sku,
+            selections,
+            quantityBySkuId.get(sku.id) ?? 0,
         );
-        return this._toSkuResponse(sku, selections);
     }
 
     private async _assertCategoryExists(categoryId: string): Promise<void> {
@@ -320,6 +331,15 @@ export class ProductService extends BaseService {
         if (existing.length > 0) {
             throw new ConflictError(ProductError.SKU_CODE_ALREADY_EXISTS);
         }
+    }
+
+    private async _expandCategoryFilter(
+        categoryId?: string,
+    ): Promise<string[] | undefined> {
+        if (!categoryId) return undefined;
+        const subtree =
+            await this.repositories.categoryClosure.findSubtreeIds(categoryId);
+        return subtree.length > 0 ? subtree : [categoryId];
     }
 
     private async _generateUniqueSlug(
@@ -529,11 +549,28 @@ export class ProductService extends BaseService {
         };
     }
 
-    private _toProductDetail(spu: SpuWithRelations): ProductDetailDto {
+    private _toProductCategory(
+        category?: CategoryEntity,
+    ): ProductCategoryDto | undefined {
+        if (!category) return undefined;
+        return {
+            iconUrl: category.iconUrl,
+            id: category.id,
+            name: category.name,
+            parentId: category.parentId,
+            slug: category.slug,
+        };
+    }
+
+    private _toProductDetail(
+        spu: SpuWithRelations,
+        quantityBySkuId: Map<string, number>,
+    ): ProductDetailDto {
         return {
             attributes: (spu.attributes ?? []).map((attr) =>
                 this._toAttributeResponse(attr, attr.values ?? []),
             ),
+            category: this._toProductCategory(spu.category),
             categoryId: spu.categoryId,
             description: spu.description,
             id: spu.id,
@@ -550,9 +587,11 @@ export class ProductService extends BaseService {
                         attributeValueId: sel.attributeValueId,
                         skuId: sku.id,
                     })),
+                    quantityBySkuId.get(sku.id) ?? 0,
                 ),
             ),
             slug: spu.slug,
+            soldCount: spu.soldCount,
             version: spu.version,
         };
     }
@@ -560,6 +599,7 @@ export class ProductService extends BaseService {
     private _toSkuResponse(
         sku: SkuEntity,
         selections: Array<{ attributeId: string; attributeValueId: string }>,
+        quantity = 0,
     ): ProductSkuResponseDto {
         return {
             id: sku.id,
@@ -567,6 +607,7 @@ export class ProductService extends BaseService {
             isActive: sku.isActive,
             name: sku.name,
             price: sku.price,
+            quantity,
             selections: selections.map((sel) => ({
                 attributeId: sel.attributeId,
                 attributeValueId: sel.attributeValueId,

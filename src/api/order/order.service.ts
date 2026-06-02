@@ -1,9 +1,11 @@
 import cartService from "@api/cart/cart.service";
 import deliveryService from "@api/delivery/delivery.service";
 import discountService from "@api/discount/discount.service";
+import { DiscountEvaluationContext } from "@api/discount/discount.type";
 import {
     AddressEntity,
     DeliveryStatus,
+    DiscountClaimEntity,
     DiscountScope,
     DiscountType,
     InventoryEntity,
@@ -73,6 +75,7 @@ export class OrderService extends BaseService {
         }
         const items = await this.repositories.orderItem.findByOrderId(order.id);
         await this._restockInventory(items);
+        await this._decrementSoldCounts(items);
         await discountService.releaseRedemption(order.id);
         return this._buildOrderResponse(await this._getOrderOrThrow(order.id));
     }
@@ -195,6 +198,16 @@ export class OrderService extends BaseService {
         });
     }
 
+    private _aggregateBySpu(
+        rows: Array<{ qty: number; spuId: string }>,
+    ): Map<string, number> {
+        const totals = new Map<string, number>();
+        for (const row of rows) {
+            totals.set(row.spuId, (totals.get(row.spuId) ?? 0) + row.qty);
+        }
+        return totals;
+    }
+
     private _allocateForSku(
         item: CartLineHydrated,
         inventoryRows: InventoryEntity[],
@@ -228,10 +241,10 @@ export class OrderService extends BaseService {
 
     private async _applyDiscount(args: {
         bundle: PerShopBundle;
-        consumedCode: Set<string>;
+        claims: DiscountClaimEntity[];
+        consumedClaimId: Set<string>;
         deliveryFee: string;
         discountType: DiscountType;
-        previewCode?: string;
         userId: string;
     }): Promise<AppliedDiscount | undefined> {
         const ctx = {
@@ -246,12 +259,8 @@ export class OrderService extends BaseService {
             })),
             userId: args.userId,
         };
-        const fromCode = await this._tryDiscountCode(
-            args,
-            ctx,
-            args.discountType,
-        );
-        if (fromCode) return fromCode;
+        const fromClaim = await this._tryClaimedDiscount(args, ctx);
+        if (fromClaim) return fromClaim;
         return this._tryAutoDiscount(args, ctx, args.discountType);
     }
 
@@ -309,11 +318,20 @@ export class OrderService extends BaseService {
             dto.callerUserId,
         );
         const bundles = this._groupByShop(lines);
-        const consumedCode = new Set<string>();
+        const claims = await this._loadClaims(
+            dto.callerUserId,
+            dto.claimedDiscountIds,
+        );
+        const consumedClaimId = new Set<string>();
         const previewBundles: CheckoutPreviewBundle[] = [];
         for (const bundle of bundles) {
             previewBundles.push(
-                await this._buildPreviewBundle(bundle, dto, consumedCode),
+                await this._buildPreviewBundle(
+                    bundle,
+                    dto,
+                    claims,
+                    consumedClaimId,
+                ),
             );
         }
         const grandTotal = previewBundles
@@ -417,7 +435,8 @@ export class OrderService extends BaseService {
     private async _buildPreviewBundle(
         bundle: PerShopBundle,
         dto: CheckoutPreviewRequestDto,
-        consumedCode: Set<string>,
+        claims: DiscountClaimEntity[],
+        consumedClaimId: Set<string>,
     ): Promise<CheckoutPreviewBundle> {
         const allocation = await this._pickWarehouses(bundle);
         const quote = await this._getDeliveryQuote(
@@ -429,18 +448,18 @@ export class OrderService extends BaseService {
         );
         const itemsDiscount = await this._applyDiscount({
             bundle,
-            consumedCode,
+            claims,
+            consumedClaimId,
             deliveryFee: quote.fee,
             discountType: DiscountType.ITEMS,
-            previewCode: dto.code,
             userId: dto.callerUserId,
         });
         const deliveryDiscount = await this._applyDiscount({
             bundle,
-            consumedCode,
+            claims,
+            consumedClaimId,
             deliveryFee: quote.fee,
             discountType: DiscountType.DELIVERY,
-            previewCode: dto.code,
             userId: dto.callerUserId,
         });
         const total = this._computeTotal(
@@ -470,6 +489,21 @@ export class OrderService extends BaseService {
             patch.paymentStatus = PaymentStatus.PAID;
         }
         return patch;
+    }
+
+    private async _bumpSoldCounts(items: CartLineHydrated[]): Promise<void> {
+        const totals = this._aggregateBySpu(
+            items.map((item) => ({ qty: item.quantity, spuId: item.spuId })),
+        );
+        for (const [spuId, qty] of totals.entries()) {
+            const affected = await this.repositories.spu.bumpSoldCount(
+                spuId,
+                qty,
+            );
+            if (affected !== 1) {
+                this.logger.warn("Failed to bump sold count", { qty, spuId });
+            }
+        }
     }
 
     private _cancellableStatuses(role: OrderCancelledByRole): Set<OrderStatus> {
@@ -519,6 +553,29 @@ export class OrderService extends BaseService {
                 if (affected !== 1) {
                     throw new ConflictError(OrderError.INSUFFICIENT_STOCK);
                 }
+            }
+        }
+    }
+
+    private async _decrementSoldCounts(
+        items: OrderItemEntity[],
+    ): Promise<void> {
+        const totals = this._aggregateBySpu(
+            items.map((item) => ({
+                qty: item.quantity,
+                spuId: item.spuIdSnapshot,
+            })),
+        );
+        for (const [spuId, qty] of totals.entries()) {
+            const affected = await this.repositories.spu.decrementSoldCount(
+                spuId,
+                qty,
+            );
+            if (affected !== 1) {
+                this.logger.warn("Failed to decrement sold count", {
+                    qty,
+                    spuId,
+                });
             }
         }
     }
@@ -640,6 +697,14 @@ export class OrderService extends BaseService {
         });
     }
 
+    private async _loadClaims(
+        userId: string,
+        ids: string[] | undefined,
+    ): Promise<DiscountClaimEntity[]> {
+        if (!ids || ids.length === 0) return [];
+        return this.repositories.discountClaim.findByIdsForUser(ids, userId);
+    }
+
     private _mapOrderToDeliveryStatus(
         orderStatus: OrderStatus,
     ): DeliveryStatus | null {
@@ -673,6 +738,7 @@ export class OrderService extends BaseService {
             userId,
         });
         await this._persistOrderItems(order, previewBundle);
+        await this._bumpSoldCounts(previewBundle.bundle.items);
         await this._persistDelivery(order, previewBundle, address.id);
         const redemptions = await this._persistRedemptions(
             order,
@@ -736,12 +802,21 @@ export class OrderService extends BaseService {
             discount: AppliedDiscount | undefined,
         ): Promise<void> => {
             if (!discount) return;
-            await discountService.recordRedemption({
-                discountId: discount.discountId,
-                orderId: order.id,
-                redeemedAmount: discount.amount,
-                userId,
-            });
+            if (discount.claimId) {
+                await discountService.consumeClaim({
+                    claimId: discount.claimId,
+                    orderId: order.id,
+                    redeemedAmount: discount.amount,
+                    userId,
+                });
+            } else {
+                await discountService.recordRedemption({
+                    discountId: discount.discountId,
+                    orderId: order.id,
+                    redeemedAmount: discount.amount,
+                    userId,
+                });
+            }
             records.push({
                 discountId: discount.discountId,
                 redeemedAmount: discount.amount,
@@ -893,45 +968,35 @@ export class OrderService extends BaseService {
         return { amount: auto.appliedAmount, discountId: auto.discountId };
     }
 
-    private async _tryDiscountCode(
+    private async _tryClaimedDiscount(
         args: {
-            consumedCode: Set<string>;
-            previewCode?: string;
+            bundle: PerShopBundle;
+            claims: DiscountClaimEntity[];
+            consumedClaimId: Set<string>;
+            discountType: DiscountType;
         },
-        ctx: {
-            deliveryFee: string;
-            evaluatedAt: Date;
-            items: {
-                quantity: number;
-                shopId: string;
-                skuId: string;
-                spuId: string;
-                unitPrice: string;
-            }[];
-            userId: string;
-        },
-        discountType: DiscountType,
+        ctx: DiscountEvaluationContext,
     ): Promise<AppliedDiscount | undefined> {
-        if (!args.previewCode || args.consumedCode.has(args.previewCode)) {
-            return undefined;
+        for (const claim of args.claims) {
+            if (args.consumedClaimId.has(claim.id)) continue;
+            const discount = claim.discount;
+            if (discount.discountType !== args.discountType) continue;
+            if (
+                discount.scope === DiscountScope.SHOP &&
+                discount.shopId !== args.bundle.shopId
+            ) {
+                continue;
+            }
+            const result = await discountService.evaluate(discount, ctx);
+            if (!result.isEligible) continue;
+            args.consumedClaimId.add(claim.id);
+            return {
+                amount: result.appliedAmount,
+                claimId: claim.id,
+                discountId: result.discountId,
+            };
         }
-        const codeResult = await discountService.validateCode(
-            args.previewCode,
-            ctx,
-        );
-        if (!codeResult || !codeResult.isEligible) return undefined;
-        const discount = await this.repositories.discount.findOne({
-            select: { discountType: true, id: true },
-            where: { id: codeResult.discountId },
-        });
-        if (!discount || discount.discountType !== discountType)
-            return undefined;
-        args.consumedCode.add(args.previewCode);
-        return {
-            amount: codeResult.appliedAmount,
-            code: args.previewCode,
-            discountId: codeResult.discountId,
-        };
+        return undefined;
     }
 }
 

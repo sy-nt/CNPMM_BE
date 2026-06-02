@@ -11,9 +11,19 @@ import discountController from "./discount.controller";
 import {
     getDiscountsRequestQuerySchema,
     getShopDiscountsRequestQuerySchema,
+    myClaimsRequestQuerySchema,
 } from "./discount.schema";
 
 const discountsRouter = Router();
+
+discountsRouter.get(
+    "/me/claims",
+    rateLimit({ limit: 30, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    validator({ query: myClaimsRequestQuerySchema }),
+    rbac([DISCOUNT_PERMISSIONS.DISCOUNT_READ]),
+    asyncWrapper(discountController.getMyClaims),
+);
 
 discountsRouter.get(
     "/shop",

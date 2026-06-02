@@ -7,11 +7,22 @@ import {
     CreateGlobalDiscountRequestDto,
     CreateShopDiscountRequestDto,
     GetDiscountsRequestDto,
+    GetMyClaimsRequestDto,
     UpdateDiscountRequestDto,
 } from "./discount.dto";
 import discountService from "./discount.service";
 
 export class DiscountController {
+    @CreatedResponse()
+    async claimDiscount(req: Request) {
+        const { id } = extractRequest<{ id: string }>(req, "params");
+        const jwt = RequestContextService.getJwtPayload()!;
+        return discountService.claimDiscount({
+            callerUserId: jwt.userId,
+            id,
+        });
+    }
+
     @CreatedResponse()
     async createGlobalDiscount(req: Request) {
         const dto = extractRequest<CreateGlobalDiscountRequestDto>(req, "body");
@@ -58,6 +69,16 @@ export class DiscountController {
             ...query,
             callerRoleId: jwt.roleId,
             callerShopId: jwt.assignedShopId,
+        });
+    }
+
+    @OkResponse()
+    async getMyClaims(req: Request) {
+        const query = extractRequest<GetMyClaimsRequestDto>(req, "query");
+        const jwt = RequestContextService.getJwtPayload()!;
+        return discountService.getMyClaims({
+            ...query,
+            callerUserId: jwt.userId,
         });
     }
 

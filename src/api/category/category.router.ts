@@ -20,7 +20,7 @@ const categoryRouter = Router();
 
 categoryRouter.post(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 20, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ body: createCategoryRequestSchema }),
     rbac([CATEGORY_PERMISSIONS.CATEGORY_CREATE]),
@@ -29,7 +29,7 @@ categoryRouter.post(
 
 categoryRouter.put(
     "/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 20, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         body: updateCategoryRequestBodySchema,
@@ -41,7 +41,7 @@ categoryRouter.put(
 
 categoryRouter.delete(
     "/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 20, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ params: deleteCategoryRequestParamsSchema }),
     rbac([CATEGORY_PERMISSIONS.CATEGORY_DELETE]),
@@ -50,7 +50,7 @@ categoryRouter.delete(
 
 categoryRouter.get(
     "/:id/tree",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 20, scope: "route", windowSeconds: 60 }),
     authenticator("access-optional"),
     validator({
         params: getCategoryTreeRequestParamsSchema,

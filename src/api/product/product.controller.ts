@@ -107,9 +107,12 @@ export class ProductController {
 
     @OkResponse()
     async getProduct(req: Request) {
-        const { id } = extractRequest<{ id: string }>(req, "params");
+        const { idOrSlug } = extractRequest<{ idOrSlug: string }>(
+            req,
+            "params",
+        );
         return productService.getProduct({
-            id,
+            idOrSlug,
         });
     }
 

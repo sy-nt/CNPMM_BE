@@ -1,8 +1,10 @@
 import { SpuEntity } from "@domain/entities";
 import { DefaultPaginationDto, SortDirection } from "@shared/types";
-import { Brackets, FindOptionsWhere, In, SelectQueryBuilder } from "typeorm";
+import { FindOptionsWhere, In, SelectQueryBuilder } from "typeorm";
 
 import { BaseRepository } from "./base";
+
+const FULLTEXT_BOOLEAN_OPERATORS = /[+\-><()~*"@]/g;
 
 export type SpuListFilters = {
     categoryIds?: string[];
@@ -20,6 +22,7 @@ export type SpuSummaryRow = {
     price: string;
     shopId: string;
     slug: string;
+    soldCount: number;
 };
 
 export class SpuRepository extends BaseRepository<SpuEntity> {
@@ -27,12 +30,46 @@ export class SpuRepository extends BaseRepository<SpuEntity> {
         super(SpuEntity);
     }
 
-    findDetailWithRelations = async (
+    bumpSoldCount = async (spuId: string, delta: number): Promise<number> => {
+        const manager = await this._entityManager();
+        const result = await manager
+            .createQueryBuilder()
+            .update(SpuEntity)
+            .set({ soldCount: () => "sold_count + :delta" })
+            .where("id = :id", { id: spuId })
+            .setParameter("delta", delta)
+            .execute();
+        return result.affected ?? 0;
+    };
+
+    decrementSoldCount = async (
         spuId: string,
+        delta: number,
+    ): Promise<number> => {
+        const manager = await this._entityManager();
+        const result = await manager
+            .createQueryBuilder()
+            .update(SpuEntity)
+            .set({ soldCount: () => "sold_count - :delta" })
+            .where("id = :id", { id: spuId })
+            .andWhere("sold_count >= :delta")
+            .setParameter("delta", delta)
+            .execute();
+        return result.affected ?? 0;
+    };
+
+    findDetailWithRelations = async (
+        idOrSlug: string,
         opts?: { onlyActive?: boolean },
     ): Promise<null | SpuEntity> => {
         const qb = this.repository
             .createQueryBuilder("spu")
+            .leftJoinAndMapOne(
+                "spu.category",
+                "categories",
+                "cat",
+                "cat.id = spu.category_id AND cat.deleted_at IS NULL",
+            )
             .leftJoinAndMapMany(
                 "spu.skus",
                 "skus",
@@ -57,7 +94,7 @@ export class SpuRepository extends BaseRepository<SpuEntity> {
                 "sav",
                 "sav.sku_id = sku.id",
             )
-            .where("spu.id = :spuId", { spuId });
+            .where("spu.id = :idOrSlug OR spu.slug = :idOrSlug", { idOrSlug });
 
         if (opts?.onlyActive) {
             qb.andWhere("spu.is_active = 1").andWhere("spu.deleted_at IS NULL");
@@ -142,15 +179,13 @@ export class SpuRepository extends BaseRepository<SpuEntity> {
             });
         }
         if (filters.search) {
-            qb.andWhere(
-                new Brackets((b) => {
-                    b.where("spu.name LIKE :search", {
-                        search: `%${filters.search}%`,
-                    }).orWhere("spu.slug LIKE :search", {
-                        search: `%${filters.search}%`,
-                    });
-                }),
-            );
+            const booleanQuery = this._toFullTextBooleanQuery(filters.search);
+            if (booleanQuery) {
+                qb.andWhere(
+                    "MATCH(spu.name, spu.description) AGAINST (:search IN BOOLEAN MODE)",
+                    { search: booleanQuery },
+                );
+            }
         }
     }
 
@@ -180,6 +215,7 @@ export class SpuRepository extends BaseRepository<SpuEntity> {
                 "spu.price",
                 "spu.mainImageKey",
                 "spu.isActive",
+                "spu.soldCount",
             ]);
     }
 
@@ -189,10 +225,22 @@ export class SpuRepository extends BaseRepository<SpuEntity> {
                 return "name";
             case "price":
                 return "price";
+            case "soldCount":
+                return "sold_count";
             case "createdAt":
             default:
                 return "createdAt";
         }
+    }
+
+    private _toFullTextBooleanQuery(raw: string): null | string {
+        const tokens = raw
+            .replace(FULLTEXT_BOOLEAN_OPERATORS, " ")
+            .trim()
+            .split(/\s+/)
+            .filter((token) => token.length > 0);
+        if (tokens.length === 0) return null;
+        return tokens.map((token) => `+${token}*`).join(" ");
     }
 
     private _toSummary(s: SpuEntity): SpuSummaryRow {
@@ -205,6 +253,7 @@ export class SpuRepository extends BaseRepository<SpuEntity> {
             price: s.price,
             shopId: s.shopId,
             slug: s.slug,
+            soldCount: s.soldCount,
         };
     }
 }

@@ -2,7 +2,7 @@ import type { OrderEntity } from "@domain/entities";
 
 export interface AppliedDiscount {
     amount: string;
-    code?: string;
+    claimId?: string;
     discountId: string;
 }
 

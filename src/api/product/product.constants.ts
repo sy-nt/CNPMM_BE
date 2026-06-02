@@ -14,7 +14,12 @@ export enum ProductError {
     WAREHOUSE_NOT_FOUND = "Warehouse not found",
 }
 
-export const PRODUCT_ORDER_BY_FIELDS = ["createdAt", "name", "price"] as const;
+export const PRODUCT_ORDER_BY_FIELDS = [
+    "createdAt",
+    "name",
+    "price",
+    "soldCount",
+] as const;
 export const PRODUCT_ORDER_BY_FIELDS_DEFAULT = "createdAt";
 
 export const RBAC_PRODUCT_ACTIONS = {

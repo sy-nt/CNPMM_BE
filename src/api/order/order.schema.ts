@@ -31,7 +31,7 @@ export const cancelOrderRequestBodySchema = Joi.object({
 });
 
 export const checkoutPreviewRequestSchema = Joi.object({
-    code: Joi.string().trim().min(1).max(64).uppercase().optional(),
+    claimedDiscountIds: Joi.array().items(uuid.required()).unique().optional(),
     deliveryMethodId: uuid.required(),
     destinationAddressId: uuid.required(),
 });
@@ -53,7 +53,7 @@ export const orderIdParamsSchema = Joi.object({
 });
 
 export const placeOrderRequestSchema = Joi.object({
-    code: Joi.string().trim().min(1).max(64).uppercase().optional(),
+    claimedDiscountIds: Joi.array().items(uuid.required()).unique().optional(),
     deliveryMethodId: uuid.required(),
     destinationAddressId: uuid.required(),
     expectedTotalAmount: decimalString.required(),

@@ -18,7 +18,7 @@ export interface CancelOrderRequestDto {
 
 export interface CheckoutPreviewRequestDto {
     callerUserId: string;
-    code?: string;
+    claimedDiscountIds?: string[];
     deliveryMethodId: string;
     destinationAddressId: string;
 }
@@ -80,7 +80,7 @@ export interface OrderResponseDto {
 
 export interface PlaceOrderRequestDto {
     callerUserId: string;
-    code?: string;
+    claimedDiscountIds?: string[];
     deliveryMethodId: string;
     destinationAddressId: string;
     expectedTotalAmount: string;

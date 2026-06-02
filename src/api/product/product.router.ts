@@ -33,7 +33,7 @@ productRouter.post(
 );
 
 productRouter.get(
-    "/:id",
+    "/:idOrSlug",
     rateLimit({ limit: 30, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ params: productIdParamsSchema }),

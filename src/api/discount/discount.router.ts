@@ -95,4 +95,13 @@ discountRouter.delete(
     asyncWrapper(discountController.deleteDiscount),
 );
 
+discountRouter.post(
+    "/:id/claim",
+    rateLimit({ limit: 10, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    validator({ params: discountIdParamsSchema }),
+    rbac([DISCOUNT_PERMISSIONS.DISCOUNT_CLAIM]),
+    asyncWrapper(discountController.claimDiscount),
+);
+
 export default discountRouter;

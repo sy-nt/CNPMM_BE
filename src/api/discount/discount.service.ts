@@ -1,4 +1,5 @@
 import {
+    DiscountClaimEntity,
     DiscountEntity,
     DiscountRule,
     DiscountScope,
@@ -22,13 +23,18 @@ import {
     DiscountRuleType,
 } from "./discount.constants";
 import {
+    ClaimDiscountRequestDto,
     CreateGlobalDiscountRequestDto,
     CreateShopDiscountRequestDto,
     DeleteDiscountRequestDto,
+    DiscountClaimResponseDto,
+    DiscountClaimSummaryDto,
     DiscountResponseDto,
     GetDiscountRequestDto,
     GetDiscountsRequestDto,
     GetDiscountsResponseDto,
+    GetMyClaimsRequestDto,
+    GetMyClaimsResponseDto,
     UpdateDiscountRequestDto,
 } from "./discount.dto";
 import { discountRuleRegistry } from "./discount.rules";
@@ -40,6 +46,46 @@ import {
 } from "./discount.type";
 
 export class DiscountService extends BaseService {
+    async claimDiscount(
+        dto: ClaimDiscountRequestDto,
+    ): Promise<DiscountClaimResponseDto> {
+        const discount = await this._getDiscountOrThrow(dto.id);
+        await this._assertClaimable(discount, dto.callerUserId);
+        const claim = await this.repositories.discountClaim.create({
+            discountId: discount.id,
+            userId: dto.callerUserId,
+        });
+        return this._toClaimResponse(claim, discount);
+    }
+
+    async consumeClaim(args: {
+        claimId: string;
+        orderId?: string;
+        redeemedAmount: string;
+        userId: string;
+    }): Promise<void> {
+        const claim = await this.repositories.discountClaim.findOne({
+            where: { id: args.claimId },
+        });
+        if (!claim) throw new NotFoundError(DiscountError.CLAIM_NOT_FOUND);
+        if (claim.userId !== args.userId) {
+            throw new ForbiddenError(DiscountError.CLAIM_FORBIDDEN);
+        }
+        const discount = await this.repositories.discount.findOneAndLock(
+            claim.discountId,
+        );
+        if (!discount) {
+            throw new NotFoundError(DiscountError.DISCOUNT_NOT_FOUND);
+        }
+        await this._writeRedemption(discount, {
+            discountId: claim.discountId,
+            orderId: args.orderId,
+            redeemedAmount: args.redeemedAmount,
+            userId: args.userId,
+        });
+        await this.repositories.discountClaim.delete({ id: claim.id });
+    }
+
     async createGlobalDiscount(
         dto: CreateGlobalDiscountRequestDto,
     ): Promise<DiscountResponseDto> {
@@ -210,6 +256,26 @@ export class DiscountService extends BaseService {
         };
     }
 
+    async getMyClaims(
+        dto: GetMyClaimsRequestDto,
+    ): Promise<GetMyClaimsResponseDto> {
+        const result = await this.repositories.discountClaim.findActiveByUser(
+            dto.callerUserId,
+            {
+                limit: dto.limit,
+                orderBy: dto.orderBy,
+                page: dto.page,
+                sort: dto.sort,
+            },
+        );
+        return {
+            ...result,
+            items: result.items.map((claim) =>
+                this._toClaimResponse(claim, claim.discount),
+            ),
+        };
+    }
+
     async recordRedemption(args: {
         discountId: string;
         orderId?: string;
@@ -222,15 +288,7 @@ export class DiscountService extends BaseService {
         if (!discount) {
             throw new NotFoundError(DiscountError.DISCOUNT_NOT_FOUND);
         }
-        this._assertWithinMaxUses(discount);
-        await this._assertWithinMaxUsesPerUser(discount, args.userId);
-        await this.repositories.discountRedemption.create({
-            discountId: args.discountId,
-            orderId: args.orderId,
-            redeemedAmount: args.redeemedAmount,
-            userId: args.userId,
-        });
-        await this.repositories.discount.bumpUsedCount(args.discountId);
+        await this._writeRedemption(discount, args);
     }
 
     async releaseRedemption(orderId: string): Promise<void> {
@@ -280,6 +338,49 @@ export class DiscountService extends BaseService {
             await this.repositories.discount.findActiveByCode(code);
         if (!discount) return null;
         return this.evaluate(discount, ctx);
+    }
+
+    private async _assertClaimable(
+        discount: DiscountEntity,
+        userId: string,
+    ): Promise<void> {
+        const now = new Date();
+        if (
+            !discount.isActive ||
+            (discount.validFrom && discount.validFrom > now) ||
+            (discount.validUntil && discount.validUntil < now)
+        ) {
+            throw new BadRequestError(DiscountError.CLAIM_NOT_CLAIMABLE);
+        }
+        if (discount.maxUses !== null && discount.maxUses !== undefined) {
+            const activeClaims =
+                await this.repositories.discountClaim.countActiveByDiscount(
+                    discount.id,
+                );
+            if (discount.usedCount + activeClaims >= discount.maxUses) {
+                throw new ConflictError(DiscountError.MAX_USES_REACHED);
+            }
+        }
+        if (
+            discount.maxUsesPerUser !== null &&
+            discount.maxUsesPerUser !== undefined
+        ) {
+            const [userClaims, userRedemptions] = await Promise.all([
+                this.repositories.discountClaim.countActiveByDiscountAndUser(
+                    discount.id,
+                    userId,
+                ),
+                this.repositories.discountRedemption.countByDiscountAndUser(
+                    discount.id,
+                    userId,
+                ),
+            ]);
+            if (userClaims + userRedemptions >= discount.maxUsesPerUser) {
+                throw new ConflictError(
+                    DiscountError.MAX_USES_PER_USER_REACHED,
+                );
+            }
+        }
     }
 
     private _assertDiscountAccess(
@@ -656,6 +757,37 @@ export class DiscountService extends BaseService {
         return total.toFixed(2);
     }
 
+    private _toClaimDiscountSummary(
+        discount: DiscountEntity,
+    ): DiscountClaimSummaryDto {
+        return {
+            code: discount.code,
+            description: discount.description,
+            discountType: discount.discountType,
+            id: discount.id,
+            maxDiscountAmount: discount.maxDiscountAmount,
+            name: discount.name,
+            scope: discount.scope,
+            shopId: discount.shopId,
+            validFrom: discount.validFrom,
+            validUntil: discount.validUntil,
+            value: discount.value,
+            valueType: discount.valueType,
+        };
+    }
+
+    private _toClaimResponse(
+        claim: DiscountClaimEntity,
+        discount: DiscountEntity,
+    ): DiscountClaimResponseDto {
+        return {
+            claimedAt: claim.createdAt,
+            discount: this._toClaimDiscountSummary(discount),
+            id: claim.id,
+            userId: claim.userId,
+        };
+    }
+
     private _toResponse(
         entity: DiscountEntity,
         targetSpuIds: string[],
@@ -688,6 +820,26 @@ export class DiscountService extends BaseService {
                 throw new BadRequestError(DiscountError.INVALID_RULE_TYPE);
             }
         }
+    }
+
+    private async _writeRedemption(
+        discount: DiscountEntity,
+        args: {
+            discountId: string;
+            orderId?: string;
+            redeemedAmount: string;
+            userId: string;
+        },
+    ): Promise<void> {
+        this._assertWithinMaxUses(discount);
+        await this._assertWithinMaxUsesPerUser(discount, args.userId);
+        await this.repositories.discountRedemption.create({
+            discountId: args.discountId,
+            orderId: args.orderId,
+            redeemedAmount: args.redeemedAmount,
+            userId: args.userId,
+        });
+        await this.repositories.discount.bumpUsedCount(args.discountId);
     }
 }
 

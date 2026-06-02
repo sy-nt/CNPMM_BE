@@ -8,6 +8,7 @@ import deliveryMethodRepository from "./deliveryMethod.repository";
 import deliveryZoneRepository from "./deliveryZone.repository";
 import deliveryZoneRateRepository from "./deliveryZoneRate.repository";
 import discountRepository from "./discount.repository";
+import discountClaimRepository from "./discountClaim.repository";
 import discountRedemptionRepository from "./discountRedemption.repository";
 import discountTargetSpuRepository from "./discountTargetSpu.repository";
 import imageRepository from "./image.repository";
@@ -36,6 +37,7 @@ const repositories = {
     deliveryZone: deliveryZoneRepository,
     deliveryZoneRate: deliveryZoneRateRepository,
     discount: discountRepository,
+    discountClaim: discountClaimRepository,
     discountRedemption: discountRedemptionRepository,
     discountTargetSpu: discountTargetSpuRepository,
     image: imageRepository,

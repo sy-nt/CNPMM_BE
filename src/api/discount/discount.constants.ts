@@ -1,6 +1,9 @@
 import { buildModulePermissionsMap } from "@shared/utils/role";
 
 export enum DiscountError {
+    CLAIM_FORBIDDEN = "You are not allowed to use this claim",
+    CLAIM_NOT_CLAIMABLE = "Discount cannot be claimed (inactive, expired, or maxed out)",
+    CLAIM_NOT_FOUND = "Claim not found",
     CODE_ALREADY_EXISTS = "Discount code already exists",
     DISCOUNT_FORBIDDEN = "You are not allowed to access this discount",
     DISCOUNT_LOCKED = "Discount has already started or been redeemed; only isActive may be changed",
@@ -44,6 +47,7 @@ export const DISCOUNT_ORDER_BY_FIELDS = [
 export const DISCOUNT_ORDER_BY_FIELDS_DEFAULT = "createdAt";
 
 export const RBAC_DISCOUNT_ACTIONS = {
+    CLAIM: "claim",
     CREATE: "create",
     DELETE: "delete",
     READ: "read",

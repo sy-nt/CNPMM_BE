@@ -76,7 +76,7 @@ export class CategoryService extends BaseService {
                     name: true,
                     slug: true,
                 },
-                where: { shopId: IsNull() },
+                where: { parentId: IsNull(), shopId: IsNull() },
             },
             dto,
         );

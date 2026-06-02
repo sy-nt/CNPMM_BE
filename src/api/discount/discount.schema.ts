@@ -143,6 +143,13 @@ export const getShopDiscountsRequestQuerySchema = Joi.object({
     sort,
 });
 
+export const myClaimsRequestQuerySchema = Joi.object({
+    limit,
+    orderBy: Joi.string().valid("createdAt").default("createdAt"),
+    page,
+    sort,
+});
+
 export const updateDiscountRequestBodySchema = Joi.object({
     code: Joi.string().trim().min(1).max(64).uppercase().allow(null).optional(),
     description: Joi.string().max(1000).allow(null).optional(),

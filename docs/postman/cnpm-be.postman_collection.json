@@ -2,7 +2,7 @@
     "info": {
         "_postman_id": "f2d5d900-3e6c-4a76-9f5e-9e7d7a0c7c71",
         "name": "CNPM Backend API",
-        "description": "Postman collection for the CNPM backend mounted at `/api/v1`. Modules: health-check, auth, user/users, address/addresses, cart, category/categories, delivery/deliveries, discount/discounts, image, inventory, order/orders, product/products, role/roles, shop/shops, warehouse/warehouses.\n\nConventions:\n- Authentication: bearer access token by default (collection-level). Routes that need the refresh token override the bearer at the request level (`Logout`, `Refresh Token`). Public/`access-optional` routes still send the access bearer; clear `{{accessToken}}` to test anonymous behavior.\n- The `Login` and `Refresh Token` requests automatically capture `accessToken`/`refreshToken` from the response and store them as collection variables.\n- JWT-scoped identity: request bodies never carry `userId`, `shopId`, or `ownerId`. Those values are injected by the controller from the JWT payload. The only exception is `PATCH /shop/status` which accepts a shop `id` (admin-only).\n- Idempotency: `POST /cart/items`, `POST /order/checkout`, and `POST /order/:id/cancel` honor an `Idempotency-Key` header (required for `POST /order/checkout`). The header value must match `[A-Za-z0-9_-]{8,128}`.\n- Pagination defaults: `page=1`, `limit=30`, `sort=desc`. Each module's `orderBy` accepts whitelisted values defined in its `*.constants.ts`.",
+        "description": "Postman collection for the CNPM backend mounted at `/api/v1`. Modules: health-check, auth, user/users, address/addresses, cart, category/categories, delivery/deliveries, discount/discounts, image, inventory, order/orders, product/products, role/roles, shop/shops, warehouse/warehouses.\n\nConventions:\n- Authentication: bearer access token by default (collection-level). Routes that need the refresh token override the bearer at the request level (`Logout`, `Refresh Token`). Public/`access-optional` routes still send the access bearer; clear `{{accessToken}}` to test anonymous behavior.\n- The `Login` and `Refresh Token` requests automatically capture `accessToken`/`refreshToken` from the response and store them as collection variables.\n- JWT-scoped identity: request bodies never carry `userId`, `shopId`, or `ownerId`. Those values are injected by the controller from the JWT payload. The only exception is `PATCH /shop/status` which accepts a shop `id` (admin-only).\n- Idempotency: `POST /cart/items`, `POST /order/checkout`, and `POST /order/:id/cancel` honor an `Idempotency-Key` header (required for `POST /order/checkout`). The header value must match `[A-Za-z0-9_-]{8,128}`.\n- Pagination defaults: `page=1`, `limit=30`, `sort=desc`. Shared `limit` accepts `5..50` (see `src/shared/schema.ts`). Each module's `orderBy` accepts whitelisted values defined in its `*.constants.ts`.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "auth": {
@@ -531,7 +531,7 @@
         },
         {
             "name": "Category",
-            "description": "Category management (`src/api/category/category.router.ts`) and global listing (`src/api/category/categories.router.ts`). Read endpoints accept anonymous requests via `access-optional`.",
+            "description": "Category management (`src/api/category/category.router.ts`) and global listing (`src/api/category/categories.router.ts`). Read endpoints accept anonymous requests via `access-optional`. Write/tree endpoints are rate-limited to 20 requests/min per route.",
             "item": [
                 {
                     "name": "Get System Categories",
@@ -950,7 +950,7 @@
         },
         {
             "name": "Discount",
-            "description": "Discount module (`src/api/discount/discount.router.ts`, `src/api/discount/discounts.router.ts`). Shop-scoped routes (`/discount/shop/...`) derive `shopId` from the JWT; the global `POST /discount/` is admin-only and accepts an explicit `shopId` when `scope = shop`. `valueType` ∈ `fixed | percentage`; `discountType` ∈ `items | delivery`; `scope` ∈ `global | shop`. Rules: `min_subtotal` requires `{ amount }`, `min_item_count` requires `{ count }`.",
+            "description": "Discount module (`src/api/discount/discount.router.ts`, `src/api/discount/discounts.router.ts`). Shop-scoped routes (`/discount/shop/...`) derive `shopId` from the JWT; the global `POST /discount/` is admin-only and accepts an explicit `shopId` when `scope = shop`. `valueType` ∈ `fixed | percentage`; `discountType` ∈ `items | delivery`; `scope` ∈ `global | shop`. Rules: `min_subtotal` requires `{ amount }`, `min_item_count` requires `{ count }`.\n\nClaim flow: users `POST /discount/:id/claim` to reserve a discount and `GET /discounts/me/claims` to list their active claims. Checkout (`/order/checkout/preview`, `/order/checkout`) accepts `claimedDiscountIds: string[]`; the system filters claims to those eligible per bundle, evaluates them, and consumes them on order placement. Claims auto-discard from the listing when the underlying discount is inactive, expired, or has reached its global `maxUses`.",
             "item": [
                 {
                     "name": "Create Shop Discount",
@@ -1144,6 +1144,52 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "Claim Discount",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                                    "  const json = pm.response.json();",
+                                    "  if (json.data?.id) pm.collectionVariables.set('discountClaimId', json.data.id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/discount/{{discountId}}/claim",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["discount", "{{discountId}}", "claim"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List My Claims",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/discounts/me/claims?page=1&limit=30&sort=desc&orderBy=createdAt",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["discounts", "me", "claims"],
+                            "query": [
+                                { "key": "page", "value": "1" },
+                                { "key": "limit", "value": "30" },
+                                { "key": "sort", "value": "desc" },
+                                { "key": "orderBy", "value": "createdAt" }
+                            ]
+                        }
+                    },
+                    "response": []
                 }
             ]
         },
@@ -1253,7 +1299,7 @@
                         "header": [{ "key": "Content-Type", "value": "application/json" }],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"destinationAddressId\": \"{{addressId}}\",\n  \"deliveryMethodId\": \"{{deliveryMethodId}}\",\n  \"code\": \"SUMMER10\"\n}"
+                            "raw": "{\n  \"destinationAddressId\": \"{{addressId}}\",\n  \"deliveryMethodId\": \"{{deliveryMethodId}}\",\n  \"claimedDiscountIds\": [\"{{discountClaimId}}\"]\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/order/checkout/preview",
@@ -1287,7 +1333,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"destinationAddressId\": \"{{addressId}}\",\n  \"deliveryMethodId\": \"{{deliveryMethodId}}\",\n  \"expectedTotalAmount\": \"235000.00\",\n  \"code\": \"SUMMER10\"\n}"
+                            "raw": "{\n  \"destinationAddressId\": \"{{addressId}}\",\n  \"deliveryMethodId\": \"{{deliveryMethodId}}\",\n  \"expectedTotalAmount\": \"235000.00\",\n  \"claimedDiscountIds\": [\"{{discountClaimId}}\"]\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/order/checkout",
@@ -1372,7 +1418,7 @@
         },
         {
             "name": "Product",
-            "description": "Product CRUD plus SKU/attribute composition (`src/api/product/product.router.ts`) and search (`src/api/product/products.router.ts`). Prices use string-decimal format (e.g. `\"49.99\"`).",
+            "description": "Product CRUD plus SKU/attribute composition (`src/api/product/product.router.ts`) and search (`src/api/product/products.router.ts`). Prices use string-decimal format (e.g. `\"49.99\"`).\n\nNotes:\n- `GET /products/` is `access-optional` — anonymous callers are allowed; clear `{{accessToken}}` to test guest behavior.\n- `categoryId` on `GET /products/` expands to the category subtree (any descendant matches via `category_closure`).\n- `GET /product/:idOrSlug` accepts either a product UUID or its slug; the `{{productId}}` variable holds whichever value you captured.\n- Product detail responses include the joined `category` summary (id, name, slug, parentId, iconUrl) and a per-SKU `quantity` (available stock summed across warehouses, `quantity - reserved_quantity`).",
             "item": [
                 {
                     "name": "List Products",
@@ -1385,15 +1431,16 @@
                             "path": ["products", ""],
                             "query": [
                                 { "key": "page", "value": "1" },
-                                { "key": "limit", "value": "30" },
+                                { "key": "limit", "value": "30", "description": "Range 5..50" },
                                 { "key": "sort", "value": "desc" },
                                 { "key": "orderBy", "value": "createdAt", "description": "See PRODUCT_ORDER_BY_FIELDS" },
                                 { "key": "isActive", "value": "true" },
-                                { "key": "categoryId", "value": "{{categoryId}}", "disabled": true },
+                                { "key": "categoryId", "value": "{{categoryId}}", "description": "Expands to the full subtree via category_closure", "disabled": true },
                                 { "key": "shopId", "value": "{{shopId}}", "disabled": true },
                                 { "key": "search", "value": "phone", "disabled": true }
                             ]
-                        }
+                        },
+                        "description": "Auth: `access-optional` — clear `{{accessToken}}` to test anonymous access. `categoryId` matches the category and all of its descendants."
                     },
                     "response": []
                 },
@@ -1440,7 +1487,8 @@
                             "raw": "{{baseUrl}}/product/{{productId}}",
                             "host": ["{{baseUrl}}"],
                             "path": ["product", "{{productId}}"]
-                        }
+                        },
+                        "description": "Path param is `:idOrSlug` — accepts either a product UUID or its slug. Response includes the joined `category` summary and a `quantity` field on each SKU (available stock summed across warehouses)."
                     },
                     "response": []
                 },
@@ -2057,6 +2105,7 @@
         { "key": "deliveryZoneId", "value": "" },
         { "key": "deliveryRateId", "value": "" },
         { "key": "discountId", "value": "" },
+        { "key": "discountClaimId", "value": "" },
         { "key": "orderId", "value": "" },
         { "key": "idempotencyKey", "value": "pm-demo-key-0001" }
     ]

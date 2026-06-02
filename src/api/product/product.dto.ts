@@ -70,7 +70,7 @@ export interface DeleteSkuRequestDto {
 }
 
 export interface GetProductRequestDto {
-    id: string;
+    idOrSlug: string;
 }
 
 export type GetProductsRequestDto = {
@@ -97,8 +97,17 @@ export interface ProductAttributeValueResponseDto {
     value: string;
 }
 
+export interface ProductCategoryDto {
+    iconUrl?: string;
+    id: string;
+    name: string;
+    parentId?: string;
+    slug: string;
+}
+
 export interface ProductDetailDto {
     attributes: ProductAttributeResponseDto[];
+    category?: ProductCategoryDto;
     categoryId: string;
     description?: string;
     id: string;
@@ -109,6 +118,7 @@ export interface ProductDetailDto {
     shopId: string;
     skus: ProductSkuResponseDto[];
     slug: string;
+    soldCount: number;
     version: number;
 }
 
@@ -118,6 +128,7 @@ export interface ProductSkuResponseDto {
     isActive: boolean;
     name?: string;
     price?: string;
+    quantity: number;
     selections: Array<{ attributeId: string; attributeValueId: string }>;
     skuCode: string;
     spuId: string;
@@ -127,12 +138,12 @@ export interface ProductSkuResponseDto {
 export interface ProductSummaryDto {
     categoryId: string;
     id: string;
-    isActive: boolean;
     mainImageKey?: string;
     name: string;
     price: string;
     shopId: string;
     slug: string;
+    soldCount: number;
 }
 
 export interface SetSkuInventoryRequestDto {
