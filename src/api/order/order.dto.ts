@@ -16,11 +16,17 @@ export interface CancelOrderRequestDto {
     reason?: string;
 }
 
+export interface CheckoutItemSelectionDto {
+    quantity?: number;
+    skuId: string;
+}
+
 export interface CheckoutPreviewRequestDto {
     callerUserId: string;
     claimedDiscountIds?: string[];
     deliveryMethodId: string;
     destinationAddressId: string;
+    items: CheckoutItemSelectionDto[];
 }
 
 export interface CheckoutPreviewResponseDto {
@@ -39,6 +45,7 @@ export interface GetOrdersRequestDto extends DefaultPaginationDto {
     callerRoleId?: string;
     callerShopId?: string;
     callerUserId?: string;
+    shopId?: string;
     status?: OrderStatus;
 }
 
@@ -63,6 +70,7 @@ export interface OrderResponseDto {
     };
     cancellationReason?: string;
     cancelledAt?: Date;
+    createdAt: Date;
     deliveryFee: string;
     deliveryId?: string;
     destinationAddressId: string;
@@ -84,6 +92,7 @@ export interface PlaceOrderRequestDto {
     deliveryMethodId: string;
     destinationAddressId: string;
     expectedTotalAmount: string;
+    items: CheckoutItemSelectionDto[];
 }
 
 export interface PlaceOrderResponseDto {

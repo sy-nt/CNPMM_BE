@@ -26,7 +26,7 @@ cartRouter.get(
 
 cartRouter.delete(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     rbac([CART_PERMISSIONS.CART_DELETE]),
     asyncWrapper(cartController.clearCart),

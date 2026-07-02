@@ -9,7 +9,7 @@ export const loginRequestSchema = Joi.object({
 export const signUpRequestSchema = Joi.object({
     email: email.required(),
     firstName: Joi.string().optional(),
-    imageUrl: Joi.string().uri().optional(),
+    imageKey: Joi.string().trim().min(1).max(255).optional(),
     lastName: Joi.string().optional(),
     password: strongPassword.required(),
 });

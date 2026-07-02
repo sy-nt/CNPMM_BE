@@ -1,6 +1,8 @@
 import { buildModulePermissionsMap } from "@shared/utils/role";
 
 export enum UserError {
+    INVALID_MODERATOR_ASSIGNMENT = "User cannot be assigned as moderator",
+    MODERATOR_ROLE_NOT_FOUND = "Moderator role not found",
     USER_ALREADY_EXISTS = "User already exists",
     USER_NOT_FOUND = "User not found",
 }

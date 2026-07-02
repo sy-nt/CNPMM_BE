@@ -11,6 +11,8 @@ export interface CartItemResponseDto {
     isAvailable: boolean;
     quantity: number;
     reason?: CartItemUnavailableReason;
+    shopId?: string;
+    shopName?: string;
     sku: CartItemSkuSummaryDto;
     skuId: string;
     subtotal: string;
@@ -27,6 +29,7 @@ export interface CartItemSkuSummaryDto {
     availableQuantity: number;
     id: string;
     imageKey?: string;
+    imageUrl?: string;
     isActive: boolean;
     name?: string;
     price?: string;
@@ -53,6 +56,11 @@ export interface GetCartRequestDto {
 
 export interface RemoveItemRequestDto {
     skuId: string;
+    userId: string;
+}
+
+export interface RemovePurchasedItemsRequestDto {
+    items: { quantity: number; skuId: string }[];
     userId: string;
 }
 

@@ -13,6 +13,7 @@ export * from "./discountRedemption.entity";
 export * from "./discountTargetSpu.entity";
 export * from "./image.entity";
 export * from "./inventory.entity";
+export * from "./notification.entity";
 export * from "./order.entity";
 export * from "./orderItem.entity";
 export * from "./permission.entity";

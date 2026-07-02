@@ -1,5 +1,18 @@
 import { KeySetPaginationDto, KeySetPaginationResponse } from "@shared/types";
 
+export interface AssignModeratorRequestDto {
+    email: string;
+}
+
+export interface AssignModeratorResponseDto {
+    email: string;
+    id: string;
+    role: {
+        id: string;
+        name: string;
+    };
+}
+
 export interface BlockUserRequestDto {
     email: string;
 }
@@ -26,7 +39,7 @@ export interface UpdateUserParamsDto {
 
 export interface UpdateUserRequestDto {
     firstName?: string;
-    imageUrl?: string;
+    imageKey?: string;
     lastName?: string;
     password?: string;
 }

@@ -13,7 +13,7 @@ const warehousesRouter = Router();
 
 warehousesRouter.get(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ query: getWarehousesRequestQuerySchema }),
     rbac([WAREHOUSE_PERMISSIONS.WAREHOUSE_READ]),

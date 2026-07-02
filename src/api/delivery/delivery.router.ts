@@ -53,7 +53,7 @@ deliveryRouter.patch(
 
 deliveryRouter.post(
     "/method",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ body: createDeliveryMethodRequestSchema }),
     rbac([DELIVERY_PERMISSIONS.DELIVERY_METHOD_CREATE]),
@@ -71,7 +71,7 @@ deliveryRouter.get(
 
 deliveryRouter.patch(
     "/method/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         body: updateDeliveryMethodRequestBodySchema,
@@ -83,7 +83,7 @@ deliveryRouter.patch(
 
 deliveryRouter.delete(
     "/method/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ params: deliveryIdParamsSchema }),
     rbac([DELIVERY_PERMISSIONS.DELIVERY_METHOD_DELETE]),
@@ -92,7 +92,7 @@ deliveryRouter.delete(
 
 deliveryRouter.post(
     "/zone",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ body: createDeliveryZoneRequestSchema }),
     rbac([DELIVERY_PERMISSIONS.DELIVERY_ZONE_CREATE]),
@@ -101,7 +101,7 @@ deliveryRouter.post(
 
 deliveryRouter.patch(
     "/zone/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         body: updateDeliveryZoneRequestBodySchema,
@@ -113,7 +113,7 @@ deliveryRouter.patch(
 
 deliveryRouter.delete(
     "/zone/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ params: deliveryIdParamsSchema }),
     rbac([DELIVERY_PERMISSIONS.DELIVERY_ZONE_DELETE]),
@@ -122,7 +122,7 @@ deliveryRouter.delete(
 
 deliveryRouter.post(
     "/rate",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ body: createDeliveryRateRequestSchema }),
     rbac([DELIVERY_PERMISSIONS.DELIVERY_RATE_CREATE]),
@@ -131,7 +131,7 @@ deliveryRouter.post(
 
 deliveryRouter.patch(
     "/rate/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         body: updateDeliveryRateRequestBodySchema,
@@ -143,7 +143,7 @@ deliveryRouter.patch(
 
 deliveryRouter.delete(
     "/rate/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ params: deliveryIdParamsSchema }),
     rbac([DELIVERY_PERMISSIONS.DELIVERY_RATE_DELETE]),

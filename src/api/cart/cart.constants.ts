@@ -9,8 +9,8 @@ export enum CartError {
     SKU_NOT_FOUND = "SKU not found",
 }
 
-export const CART_MAX_ITEMS = 100;
-export const CART_MAX_QUANTITY_PER_ITEM = 100;
+export const CART_MAX_ITEMS = 200;
+export const CART_MAX_QUANTITY_PER_ITEM = 500;
 export const CART_REDIS_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 export const RBAC_CART_ACTIONS = {

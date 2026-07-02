@@ -22,7 +22,7 @@ Use when touching authz, roles, permissions, or shop access control.
 ## Router pattern
 
 ```typescript
-rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
 authenticator("access"),
 validator({ body: someSchema }),         // when input exists
 rbac([PERMISSIONS.MODULE_ACTION]),       // ALWAYS pass an array

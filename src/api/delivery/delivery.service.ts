@@ -232,21 +232,17 @@ export class DeliveryService extends BaseService {
         };
     }
 
+    async syncDeliveryStatusFromOrder(
+        dto: Pick<UpdateDeliveryStatusRequestDto, "id" | "status">,
+    ): Promise<void> {
+        await this._applyDeliveryStatusUpdate(dto);
+    }
+
     async updateDeliveryStatus(
         dto: UpdateDeliveryStatusRequestDto,
     ): Promise<DeliveryResponseDto> {
-        const delivery = await this._getDeliveryOrThrow(dto.id);
-        const isAdmin = await rbacService.isAdmin(dto.callerRoleId);
-        await this._assertDeliveryAccess(delivery, dto.callerShopId, isAdmin);
-        this._assertStatusTransition(delivery.status, dto.status);
-        const updates = removeNil({
-            notes: dto.notes,
-            status: dto.status,
-            trackingCode: dto.trackingCode,
-        });
-        await this.repositories.delivery.update({ id: dto.id }, updates);
-        const refreshed = await this._getDeliveryOrThrow(dto.id);
-        return this._toDeliveryResponse(refreshed);
+        await this._assertDeliveryStatusUpdateAccess(dto.callerRoleId);
+        return this._applyDeliveryStatusUpdate(dto);
     }
 
     async updateMethod(
@@ -301,6 +297,24 @@ export class DeliveryService extends BaseService {
         return this._toZoneResponse(refreshed);
     }
 
+    private async _applyDeliveryStatusUpdate(
+        dto: Pick<
+            UpdateDeliveryStatusRequestDto,
+            "id" | "notes" | "status" | "trackingCode"
+        >,
+    ): Promise<DeliveryResponseDto> {
+        const delivery = await this._getDeliveryOrThrow(dto.id);
+        this._assertStatusTransition(delivery.status, dto.status);
+        const updates = removeNil({
+            notes: dto.notes,
+            status: dto.status,
+            trackingCode: dto.trackingCode,
+        });
+        await this.repositories.delivery.update({ id: dto.id }, updates);
+        const refreshed = await this._getDeliveryOrThrow(dto.id);
+        return this._toDeliveryResponse(refreshed);
+    }
+
     private async _assertDeliveryAccess(
         delivery: DeliveryEntity,
         callerShopId: string | undefined,
@@ -318,6 +332,18 @@ export class DeliveryService extends BaseService {
             if (owned) return;
         }
         throw new ForbiddenError(DeliveryError.DELIVERY_FORBIDDEN);
+    }
+
+    private async _assertDeliveryStatusUpdateAccess(
+        callerRoleId?: string,
+    ): Promise<void> {
+        const [isAdmin, isDeliveryAgent] = await Promise.all([
+            rbacService.isAdmin(callerRoleId),
+            rbacService.isDeliveryAgent(callerRoleId),
+        ]);
+        if (!isAdmin && !isDeliveryAgent) {
+            throw new ForbiddenError(DeliveryError.DELIVERY_FORBIDDEN);
+        }
     }
 
     private _assertStatusTransition(

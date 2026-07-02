@@ -13,6 +13,7 @@ import discountRedemptionRepository from "./discountRedemption.repository";
 import discountTargetSpuRepository from "./discountTargetSpu.repository";
 import imageRepository from "./image.repository";
 import inventoryRepository from "./inventory.repository";
+import notificationRepository from "./notification.repository";
 import orderRepository from "./order.repository";
 import orderItemRepository from "./orderItem.repository";
 import permissionRepository from "./permission.repository";
@@ -42,6 +43,7 @@ const repositories = {
     discountTargetSpu: discountTargetSpuRepository,
     image: imageRepository,
     inventory: inventoryRepository,
+    notification: notificationRepository,
     order: orderRepository,
     orderItem: orderItemRepository,
     permission: permissionRepository,

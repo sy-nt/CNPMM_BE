@@ -7,12 +7,24 @@ import { Router } from "express";
 
 import { USER_PERMISSIONS } from "./user.constants";
 import userController from "./user.controller";
-import { getUsersRequestSchema } from "./user.schema";
+import {
+    assignModeratorRequestSchema,
+    getUsersRequestSchema,
+} from "./user.schema";
 
 const usersRouter = Router();
+usersRouter.post(
+    "/moderator",
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    validator({ body: assignModeratorRequestSchema }),
+    rbac([USER_PERMISSIONS.USER_UPDATE]),
+    asyncWrapper(userController.assignModerator),
+);
+
 usersRouter.get(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         query: getUsersRequestSchema,

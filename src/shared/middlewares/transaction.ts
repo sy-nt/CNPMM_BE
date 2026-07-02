@@ -9,15 +9,18 @@ export const transactionMiddleware = async (
     next: NextFunction,
 ) => {
     const queryRunner = RequestContextService.getQueryRunner() as QueryRunner;
+    const afterCommitCallbacks =
+        RequestContextService.getContext().afterCommitCallbacks;
     let isCompleted = false;
 
     const cleanup = async () => {
         if (isCompleted) return;
         isCompleted = true;
+        const isSuccess = res.statusCode >= 200 && res.statusCode < 300;
 
         try {
             if (!queryRunner.isReleased) {
-                if (res.statusCode >= 200 && res.statusCode < 300) {
+                if (isSuccess) {
                     await queryRunner.commitTransaction();
                 } else {
                     await queryRunner.rollbackTransaction();
@@ -29,6 +32,15 @@ export const transactionMiddleware = async (
         } finally {
             if (!queryRunner.isReleased) {
                 await queryRunner.release();
+            }
+        }
+
+        if (!isSuccess) return;
+        for (const callback of afterCommitCallbacks) {
+            try {
+                await callback();
+            } catch (error) {
+                appLogger.error("After-commit callback failed", error);
             }
         }
     };

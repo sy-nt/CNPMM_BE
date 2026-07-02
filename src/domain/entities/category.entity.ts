@@ -8,7 +8,7 @@ import { ShopEntity } from "./shop.entity";
 })
 @Index(["parentId"])
 @Index(["shopId"])
-@Unique(["slug"])
+@Unique(["shopId", "slug"])
 export class CategoryEntity extends BaseEntityWithUUID {
     @Column({
         nullable: true,
@@ -71,7 +71,6 @@ export class CategoryEntity extends BaseEntityWithUUID {
     @Column({
         length: 255,
         type: "varchar",
-        unique: true,
     })
     slug!: string;
 }

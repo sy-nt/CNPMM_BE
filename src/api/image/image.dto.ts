@@ -5,3 +5,8 @@ export type CreatePresignedUrlRequestDto = {
     prefix: ImagePrefix;
     size: number;
 };
+
+export type CreatePresignedUrlResponseDto = {
+    fileKey: string;
+    uploadUrl: string;
+};

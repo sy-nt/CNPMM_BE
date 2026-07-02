@@ -7,6 +7,7 @@ import { EntityManager } from "typeorm";
 
 import {
     SHOP_FIXTURES,
+    SHOP_MODERATOR_FIXTURES,
     SHOP_OWNER_FIXTURES,
     SHOP_STAFF_FIXTURES,
 } from "./fixtures";
@@ -42,7 +43,18 @@ export const seedShops = async (
     );
 
     await _promoteOwners(manager, shopBySlug, shopOwnerRoleId);
-    await _assignStaff(manager, shopBySlug, users.staffIdsByEmail);
+    await _assignWorkers(
+        manager,
+        shopBySlug,
+        users.shopModeratorIdsByEmail,
+        SHOP_MODERATOR_FIXTURES,
+    );
+    await _assignWorkers(
+        manager,
+        shopBySlug,
+        users.staffIdsByEmail,
+        SHOP_STAFF_FIXTURES,
+    );
 
     return new Map(
         shops.map((shop) => [
@@ -57,18 +69,19 @@ export const seedShops = async (
     );
 };
 
-const _assignStaff = async (
+const _assignWorkers = async (
     manager: EntityManager,
     shopBySlug: Map<string, ShopEntity>,
-    staffIdsByEmail: Map<string, string>,
+    workerIdsByEmail: Map<string, string>,
+    fixtures: { email: string; shopSlug: string }[],
 ): Promise<void> => {
     const userRepository = manager.getRepository(UserEntity);
-    for (const staff of SHOP_STAFF_FIXTURES) {
-        const shop = shopBySlug.get(staff.shopSlug);
-        const staffId = staffIdsByEmail.get(staff.email);
-        if (!shop || !staffId) continue;
+    for (const worker of fixtures) {
+        const shop = shopBySlug.get(worker.shopSlug);
+        const workerId = workerIdsByEmail.get(worker.email);
+        if (!shop || !workerId) continue;
         await userRepository.update(
-            { id: staffId },
+            { id: workerId },
             { assignedShopId: shop.id },
         );
     }

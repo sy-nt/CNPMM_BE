@@ -3,6 +3,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 import { AddressEntity } from "./address.entity";
 import { BaseEntityWithUUID } from "./base";
 import { DeliveryMethodEntity } from "./deliveryMethod.entity";
+import { OrderEntity } from "./order.entity";
 
 export enum DeliveryStatus {
     CANCELLED = "cancelled",
@@ -63,6 +64,10 @@ export class DeliveryEntity extends BaseEntityWithUUID {
         type: "text",
     })
     notes?: string;
+
+    @JoinColumn({ name: "order_id" })
+    @ManyToOne(() => OrderEntity, { nullable: true })
+    order?: OrderEntity;
 
     @Column({
         length: 36,

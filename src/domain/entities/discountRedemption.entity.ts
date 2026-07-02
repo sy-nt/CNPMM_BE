@@ -2,6 +2,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 
 import { BaseEntityWithUUID } from "./base";
 import { DiscountEntity } from "./discount.entity";
+import { OrderEntity } from "./order.entity";
 import { UserEntity } from "./user.entity";
 
 @Entity({
@@ -21,6 +22,10 @@ export class DiscountRedemptionEntity extends BaseEntityWithUUID {
         type: "char",
     })
     discountId!: string;
+
+    @JoinColumn({ name: "order_id" })
+    @ManyToOne(() => OrderEntity, { nullable: true })
+    order?: OrderEntity;
 
     @Column({
         length: 36,

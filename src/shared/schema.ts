@@ -1,7 +1,7 @@
 import Joi from "joi";
 
 export const page = Joi.number().min(1).default(1);
-export const limit = Joi.number().min(5).max(50).default(30);
+export const limit = Joi.number().min(5).max(100).default(30);
 export const sort = Joi.string()
     .valid("desc", "asc", "DESC", "ASC")
     .default("desc");

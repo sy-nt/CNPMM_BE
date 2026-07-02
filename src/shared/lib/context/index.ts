@@ -4,10 +4,13 @@ import { NextFunction, Request, Response } from "express";
 import { QueryRunner } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 
-import { BaseService } from "../base/service";
 import { JwtPayload } from "../jwt";
 
+type AfterCommitCallback = () => Promise<void> | void;
+
 export class RequestContext {
+    public afterCommitCallbacks: AfterCommitCallback[] = [];
+
     constructor(
         public tokens?: {
             accessToken?: string;
@@ -20,7 +23,7 @@ export class RequestContext {
     ) {}
 }
 
-export class RequestContextService extends BaseService {
+export class RequestContextService {
     private static readonly ctx = new AsyncLocalStorage<RequestContext>();
 
     static getContext = () => {
@@ -52,6 +55,11 @@ export class RequestContextService extends BaseService {
     static getTokens = () => {
         const ctx = RequestContextService.getContext();
         return ctx.tokens;
+    };
+
+    static registerAfterCommit = (callback: AfterCommitCallback) => {
+        const ctx = RequestContextService.getContext();
+        ctx.afterCommitCallbacks.push(callback);
     };
 
     static setJwtPayload = (jwtPayload: JwtPayload) => {
@@ -93,10 +101,10 @@ export class RequestContextService extends BaseService {
         await queryRunner.startTransaction();
 
         const requestId = (req.headers["x-request-id"] as string) ?? uuidv4();
-        RequestContextService.ctx.enterWith({
-            queryRunner,
-            requestId,
-        });
+        const context = new RequestContext();
+        context.queryRunner = queryRunner;
+        context.requestId = requestId;
+        RequestContextService.ctx.enterWith(context);
 
         next();
     }

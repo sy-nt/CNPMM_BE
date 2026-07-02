@@ -6,10 +6,17 @@ export interface CustomerFixture {
     lastName: string;
 }
 
+export const SEED_DISCOUNT_VALID_FROM = new Date("2025-01-01T00:00:00.000Z");
+export const SEED_DISCOUNT_VALID_UNTIL = new Date("2028-12-31T23:59:59.000Z");
+
 export interface DiscountFixture {
     code: string;
     description: string;
+    discountType?: "delivery" | "items";
     isPercentage: boolean;
+    maxDiscountAmount?: string;
+    maxUses?: number;
+    maxUsesPerUser?: number;
     minSubtotal?: string;
     name: string;
     value: string;
@@ -71,6 +78,12 @@ export const ADMIN_FIXTURE = {
     email: "admin@example.com",
     firstName: "System",
     lastName: "Admin",
+} as const;
+
+export const MODERATOR_FIXTURE = {
+    email: "moderator@example.com",
+    firstName: "Platform",
+    lastName: "Moderator",
 } as const;
 
 export const CUSTOMER_FIXTURES: CustomerFixture[] = [
@@ -193,6 +206,39 @@ export const SHOP_OWNER_FIXTURES: ShopOwnerFixture[] = [
         email: "owner.annam@example.com",
         firstName: "Tien",
         lastName: "Vo",
+        shopSlug: "annam-outdoors",
+    },
+];
+
+export const SHOP_MODERATOR_FIXTURES: ShopStaffFixture[] = [
+    {
+        email: "mod.aurora@example.com",
+        firstName: "Cuong",
+        lastName: "Phan",
+        shopSlug: "aurora-electronics",
+    },
+    {
+        email: "mod.mekong@example.com",
+        firstName: "Diep",
+        lastName: "Nguyen",
+        shopSlug: "mekong-threads",
+    },
+    {
+        email: "mod.hanoi@example.com",
+        firstName: "Ha",
+        lastName: "Le",
+        shopSlug: "hanoi-hearth",
+    },
+    {
+        email: "mod.lotus@example.com",
+        firstName: "Lan",
+        lastName: "Tran",
+        shopSlug: "lotus-beauty",
+    },
+    {
+        email: "mod.annam@example.com",
+        firstName: "Long",
+        lastName: "Ho",
         shopSlug: "annam-outdoors",
     },
 ];
@@ -454,6 +500,22 @@ export const SHOP_PRODUCT_TEMPLATES: Record<string, ProductTemplateFixture[]> =
                 description: "Carbon-blend 7ft spinning rod, medium action.",
                 name: "Riverstone Spinning Rod",
             },
+            {
+                attribute: { name: "Size", values: SIZE_VARIANTS },
+                basePrice: "790000.00",
+                categoryName: "Team Sports",
+                description:
+                    "Size 5 match soccer ball with thermally bonded panels.",
+                name: "Matchday Soccer Ball",
+            },
+            {
+                attribute: { name: "Color", values: COLOR_VARIANTS },
+                basePrice: "1190000.00",
+                categoryName: "Outdoor Toys",
+                description:
+                    "Foldable flying disc set with carry pouch, pack of 3.",
+                name: "Sky Toss Disc Set",
+            },
         ],
         "aurora-electronics": [
             {
@@ -502,6 +564,22 @@ export const SHOP_PRODUCT_TEMPLATES: Record<string, ProductTemplateFixture[]> =
                 categoryName: "Cameras",
                 description: "24MP APS-C mirrorless camera body with kit lens.",
                 name: "Vista Mirrorless Camera",
+            },
+            {
+                attribute: { name: "Color", values: COLOR_VARIANTS },
+                basePrice: "8990000.00",
+                categoryName: "Tablets",
+                description:
+                    "11-inch LCD tablet with stylus support and 128GB storage.",
+                name: "Nova Tab 11",
+            },
+            {
+                attribute: { name: "Color", values: COLOR_VARIANTS },
+                basePrice: "15990000.00",
+                categoryName: "Gaming Laptops",
+                description:
+                    "RTX-equipped gaming laptop with 16GB RAM and 1TB SSD.",
+                name: "Pulse Gaming Laptop",
             },
         ],
         "hanoi-hearth": [
@@ -554,6 +632,22 @@ export const SHOP_PRODUCT_TEMPLATES: Record<string, ProductTemplateFixture[]> =
                 description: "Solid oak side table with smooth-glide drawer.",
                 name: "Oakline Side Table",
             },
+            {
+                attribute: { name: "Color", values: COLOR_VARIANTS },
+                basePrice: "2490000.00",
+                categoryName: "BBQ & Grills",
+                description:
+                    "Compact charcoal patio grill with foldable legs and cover.",
+                name: "Patio Compact Grill",
+            },
+            {
+                attribute: { name: "Color", values: COLOR_VARIANTS },
+                basePrice: "1890000.00",
+                categoryName: "Desks",
+                description:
+                    "Height-adjustable sit-stand desk with cable-management tray.",
+                name: "Ergo Sit-Stand Desk",
+            },
         ],
         "lotus-beauty": [
             {
@@ -599,6 +693,21 @@ export const SHOP_PRODUCT_TEMPLATES: Record<string, ProductTemplateFixture[]> =
                 categoryName: "Skincare",
                 description: "Brightening vitamin C cream for nightly use.",
                 name: "Citrus Night Cream",
+            },
+            {
+                attribute: { name: "Size", values: ["60 caps", "120 caps"] },
+                basePrice: "420000.00",
+                categoryName: "Vitamins",
+                description:
+                    "Daily multivitamin with zinc, biotin, and vitamin D3.",
+                name: "Daily Glow Multivitamin",
+            },
+            {
+                attribute: { name: "Size", values: ["100ml", "200ml"] },
+                basePrice: "280000.00",
+                categoryName: "Personal Hygiene",
+                description: "Alcohol-free mouthwash with mint and fluoride.",
+                name: "Fresh Mint Mouthwash",
             },
         ],
         "mekong-threads": [
@@ -648,10 +757,150 @@ export const SHOP_PRODUCT_TEMPLATES: Record<string, ProductTemplateFixture[]> =
                 description: "Bamboo-blend bucket hat, UPF 50+.",
                 name: "Bamboo Bucket Hat",
             },
+            {
+                attribute: { name: "Size", values: SIZE_VARIANTS },
+                basePrice: "450000.00",
+                categoryName: "Tops",
+                description: "Ribbed knit crop top with scoop neckline.",
+                name: "Ribbed Knit Crop Top",
+            },
+            {
+                attribute: { name: "Size", values: ["S", "M", "L", "XL"] },
+                basePrice: "1190000.00",
+                categoryName: "Shirts",
+                description:
+                    "Tailored oxford button-down shirt with wrinkle-resistant finish.",
+                name: "Oxford Button-Down Shirt",
+            },
         ],
     };
 
 export const PRODUCT_VARIANTS_PER_TEMPLATE = 3;
+
+export const GLOBAL_DISCOUNT_FIXTURES: DiscountFixture[] = [
+    {
+        code: "GLOBAL10",
+        description: "10% off item subtotals platform-wide.",
+        isPercentage: true,
+        maxDiscountAmount: "500000.00",
+        maxUsesPerUser: 5,
+        minSubtotal: "200000.00",
+        name: "Global 10% Off",
+        value: "10",
+    },
+    {
+        code: "GLOBAL-100K",
+        description: "Flat 100,000 VND off when order subtotal >= 1M.",
+        isPercentage: false,
+        maxUses: 10000,
+        minSubtotal: "1000000.00",
+        name: "Global 100K Off",
+        value: "100000.00",
+    },
+    {
+        code: "FREESHIP-GLOBAL",
+        description: "Free standard delivery on qualifying orders.",
+        discountType: "delivery",
+        isPercentage: true,
+        minSubtotal: "300000.00",
+        name: "Global Free Shipping",
+        value: "100",
+    },
+    {
+        code: "WELCOME-5",
+        description: "5% welcome discount for new shoppers.",
+        isPercentage: true,
+        maxDiscountAmount: "200000.00",
+        maxUsesPerUser: 1,
+        name: "Welcome 5%",
+        value: "5",
+    },
+    {
+        code: "GLOBAL15",
+        description: "15% off item subtotals platform-wide.",
+        isPercentage: true,
+        maxDiscountAmount: "750000.00",
+        maxUsesPerUser: 3,
+        minSubtotal: "500000.00",
+        name: "Global 15% Off",
+        value: "15",
+    },
+    {
+        code: "GLOBAL-250K",
+        description: "Flat 250,000 VND off when order subtotal >= 2M.",
+        isPercentage: false,
+        maxUses: 5000,
+        minSubtotal: "2000000.00",
+        name: "Global 250K Off",
+        value: "250000.00",
+    },
+    {
+        code: "FREESHIP-50",
+        description: "50% off standard delivery fees.",
+        discountType: "delivery",
+        isPercentage: true,
+        minSubtotal: "150000.00",
+        name: "Global Half-Price Shipping",
+        value: "50",
+    },
+    {
+        code: "STUDENT-8",
+        description: "8% student discount on qualifying orders.",
+        isPercentage: true,
+        maxDiscountAmount: "300000.00",
+        maxUsesPerUser: 10,
+        minSubtotal: "100000.00",
+        name: "Student 8%",
+        value: "8",
+    },
+    {
+        code: "BUNDLE20",
+        description: "20% off when cart subtotal >= 1.5M.",
+        isPercentage: true,
+        maxDiscountAmount: "1000000.00",
+        minSubtotal: "1500000.00",
+        name: "Bundle 20%",
+        value: "20",
+    },
+    {
+        code: "SAVE15K",
+        description: "Flat 15,000 VND off any order.",
+        isPercentage: false,
+        maxUsesPerUser: 20,
+        minSubtotal: "50000.00",
+        name: "Save 15K",
+        value: "15000.00",
+    },
+    {
+        code: "MEGA25",
+        description: "25% off high-value orders, capped at 1.5M.",
+        isPercentage: true,
+        maxDiscountAmount: "1500000.00",
+        maxUses: 2000,
+        minSubtotal: "3000000.00",
+        name: "Mega 25%",
+        value: "25",
+    },
+    {
+        code: "VIP-FREESHIP",
+        description: "Free express delivery on VIP orders >= 5M.",
+        discountType: "delivery",
+        isPercentage: true,
+        minSubtotal: "5000000.00",
+        name: "VIP Free Shipping",
+        value: "100",
+    },
+    {
+        code: "FLASH-12",
+        description: "Limited flash sale — 12% off, max 500 redemptions.",
+        isPercentage: true,
+        maxDiscountAmount: "400000.00",
+        maxUses: 500,
+        minSubtotal: "300000.00",
+        name: "Flash 12%",
+        value: "12",
+    },
+];
 
 export const SHOP_DISCOUNT_FIXTURES: Record<string, DiscountFixture[]> = {
     "annam-outdoors": [

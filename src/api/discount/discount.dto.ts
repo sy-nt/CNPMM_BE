@@ -121,6 +121,28 @@ export interface GetMyClaimsRequestDto extends DefaultPaginationDto {
 export type GetMyClaimsResponseDto =
     DefaultPaginationResponse<DiscountClaimResponseDto>;
 
+export interface ListPlatformDiscountsRequestDto extends DefaultPaginationDto {
+    discountType?: DiscountType;
+}
+
+export type ListPlatformDiscountsResponseDto =
+    DefaultPaginationResponse<PlatformDiscountSummaryDto>;
+
+export interface PlatformDiscountSummaryDto {
+    code?: string;
+    description?: string;
+    discountType: DiscountType;
+    id: string;
+    maxDiscountAmount?: string;
+    name: string;
+    rules: DiscountRule[];
+    scope: DiscountScope;
+    validFrom?: Date;
+    validUntil?: Date;
+    value: string;
+    valueType: DiscountValueType;
+}
+
 export interface UpdateDiscountRequestDto {
     callerRoleId?: string;
     callerShopId?: string;

@@ -67,6 +67,10 @@ export class OrderEntity extends BaseEntityWithUUID {
     })
     cancelledByRoleName?: string;
 
+    @JoinColumn({ name: "cancelled_by_user_id" })
+    @ManyToOne(() => UserEntity, { nullable: true })
+    cancelledByUser?: UserEntity;
+
     @Column({
         length: 36,
         name: "cancelled_by_user_id",

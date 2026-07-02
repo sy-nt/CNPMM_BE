@@ -21,7 +21,7 @@ export class UserEntity extends BaseEntityWithUUID {
         nullable: true,
         type: "char",
     })
-    assignedShopId?: string;
+    assignedShopId?: null | string;
 
     @Column({
         length: 255,
@@ -40,11 +40,11 @@ export class UserEntity extends BaseEntityWithUUID {
 
     @Column({
         length: 255,
-        name: "image_url",
+        name: "image_key",
         nullable: true,
         type: "varchar",
     })
-    imageUrl?: string;
+    imageKey?: string;
 
     @Column({
         default: false,

@@ -36,6 +36,9 @@
       "@domain/*": [
         "src/domain/*"
       ],
+      "@ws/*": [
+        "src/ws/*"
+      ],
       "@schedulers/*": [
         "src/schedulers/*"
       ],

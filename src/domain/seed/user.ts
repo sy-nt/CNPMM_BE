@@ -8,6 +8,8 @@ import {
     ADMIN_FIXTURE,
     CUSTOMER_FIXTURES,
     DEMO_PASSWORD,
+    MODERATOR_FIXTURE,
+    SHOP_MODERATOR_FIXTURES,
     SHOP_OWNER_FIXTURES,
     SHOP_STAFF_FIXTURES,
 } from "./fixtures";
@@ -15,7 +17,9 @@ import {
 export interface SeedUsersResult {
     adminId: string;
     customerIdsByEmail: Map<string, string>;
+    moderatorId: string;
     ownerIdsByEmail: Map<string, string>;
+    shopModeratorIdsByEmail: Map<string, string>;
     staffIdsByEmail: Map<string, string>;
 }
 
@@ -34,13 +38,24 @@ export const seedUsers = async (
     if (!admin) {
         throw new Error("Failed to seed admin user");
     }
+    const moderator = byEmail.get(MODERATOR_FIXTURE.email);
+    if (!moderator) {
+        throw new Error("Failed to seed moderator user");
+    }
     return {
         adminId: admin,
         customerIdsByEmail: new Map(
             CUSTOMER_FIXTURES.map((c) => [c.email, byEmail.get(c.email)!]),
         ),
+        moderatorId: moderator,
         ownerIdsByEmail: new Map(
             SHOP_OWNER_FIXTURES.map((o) => [o.email, byEmail.get(o.email)!]),
+        ),
+        shopModeratorIdsByEmail: new Map(
+            SHOP_MODERATOR_FIXTURES.map((m) => [
+                m.email,
+                byEmail.get(m.email)!,
+            ]),
         ),
         staffIdsByEmail: new Map(
             SHOP_STAFF_FIXTURES.map((s) => [s.email, byEmail.get(s.email)!]),
@@ -66,15 +81,27 @@ const _buildUserRows = (
     passwordHash: string,
 ): Partial<UserEntity>[] => {
     const adminRoleId = _requireRole(roleByName, RBAC_SYSTEM_ROLES.ADMIN);
+    const moderatorRoleId = _requireRole(
+        roleByName,
+        RBAC_SYSTEM_ROLES.MODERATOR,
+    );
+    const shopModeratorRoleId = _requireRole(
+        roleByName,
+        RBAC_SYSTEM_ROLES.SHOP_MODERATOR,
+    );
     const userRoleId = _requireRole(roleByName, RBAC_SYSTEM_ROLES.USER);
     const staffRoleId = _requireRole(roleByName, RBAC_SYSTEM_ROLES.SHOP_STAFF);
     return [
         _buildUserRow(ADMIN_FIXTURE, passwordHash, adminRoleId),
+        _buildUserRow(MODERATOR_FIXTURE, passwordHash, moderatorRoleId),
         ...CUSTOMER_FIXTURES.map((c) =>
             _buildUserRow(c, passwordHash, userRoleId),
         ),
         ...SHOP_OWNER_FIXTURES.map((o) =>
             _buildUserRow(o, passwordHash, userRoleId),
+        ),
+        ...SHOP_MODERATOR_FIXTURES.map((m) =>
+            _buildUserRow(m, passwordHash, shopModeratorRoleId),
         ),
         ...SHOP_STAFF_FIXTURES.map((s) =>
             _buildUserRow(s, passwordHash, staffRoleId),

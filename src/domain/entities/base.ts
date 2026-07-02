@@ -11,6 +11,7 @@ import { v7 } from "uuid";
 @Entity()
 export class BaseEntity {
     @CreateDateColumn({
+        default: () => "CURRENT_TIMESTAMP",
         name: "created_at",
         type: "timestamp",
     })
@@ -18,11 +19,13 @@ export class BaseEntity {
 
     @DeleteDateColumn({
         name: "deleted_at",
+        nullable: true,
         type: "timestamp",
     })
     deletedAt!: Date;
 
     @UpdateDateColumn({
+        default: () => "CURRENT_TIMESTAMP",
         name: "updated_at",
         type: "timestamp",
     })

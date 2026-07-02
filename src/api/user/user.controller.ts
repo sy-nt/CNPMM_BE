@@ -4,6 +4,7 @@ import { RequestContextService } from "@shared/lib/context";
 import { Request } from "express";
 
 import {
+    AssignModeratorRequestDto,
     BlockUserRequestDto,
     GetUsersRequestDto,
     UpdateUserRequestDto,
@@ -11,6 +12,12 @@ import {
 import userService from "./user.service";
 
 export class UserController {
+    @OkResponse()
+    async assignModerator(req: Request) {
+        const dto = extractRequest<AssignModeratorRequestDto>(req, "body");
+        return userService.assignModerator(dto);
+    }
+
     @OkResponse()
     async blockUser(req: Request) {
         const body = extractRequest<BlockUserRequestDto>(req, "body");

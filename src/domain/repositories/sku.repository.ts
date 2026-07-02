@@ -24,6 +24,34 @@ export class SkuRepository extends BaseRepository<SkuEntity> {
         });
     };
 
+    findByIdsWithSpu = async (ids: string[]): Promise<SkuEntity[]> => {
+        if (ids.length === 0) return [];
+        return this.repository.find({
+            relations: { spu: true },
+            select: {
+                id: true,
+                imageKey: true,
+                isActive: true,
+                name: true,
+                price: true,
+                skuCode: true,
+                spu: {
+                    categoryId: true,
+                    id: true,
+                    isActive: true,
+                    mainImageKey: true,
+                    name: true,
+                    price: true,
+                    shopId: true,
+                    slug: true,
+                    soldCount: true,
+                },
+                spuId: true,
+            },
+            where: { id: In(ids) },
+        });
+    };
+
     findBySpu = async (spuId: string): Promise<SkuEntity[]> => {
         return this.repository.find({
             where: { spuId },

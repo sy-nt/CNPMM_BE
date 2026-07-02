@@ -7,3 +7,5 @@ test.ts
 logs
 temp
 plans
+.venv-docgen
+docs

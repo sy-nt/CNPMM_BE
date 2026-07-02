@@ -18,15 +18,8 @@ import {
 const roleRouter = Router();
 
 roleRouter.get(
-    "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
-    authenticator("access"),
-    asyncWrapper(roleController.getUserPermissions),
-);
-
-roleRouter.get(
     "/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         params: getRoleRequestParamsSchema,
@@ -41,7 +34,7 @@ roleRouter.get(
 
 roleRouter.post(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         body: createRoleRequestSchema,
@@ -52,7 +45,7 @@ roleRouter.post(
 
 roleRouter.delete(
     "/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         params: deleteRoleRequestParamsSchema,
@@ -63,7 +56,7 @@ roleRouter.delete(
 
 roleRouter.put(
     "/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         body: updateRoleRequestBodySchema,

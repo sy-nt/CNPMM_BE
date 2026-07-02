@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { Schema } from "joi";
+import { Schema } from "joi"; // zod
 
 import { BadRequestError } from "../lib/http/httpError";
 

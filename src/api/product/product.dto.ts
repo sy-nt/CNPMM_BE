@@ -113,8 +113,10 @@ export interface ProductDetailDto {
     id: string;
     isActive: boolean;
     mainImageKey?: string;
+    mainImageUrl?: string;
     name: string;
     price: string;
+    shop: ProductShopDto;
     shopId: string;
     skus: ProductSkuResponseDto[];
     slug: string;
@@ -122,9 +124,19 @@ export interface ProductDetailDto {
     version: number;
 }
 
+export interface ProductShopDto {
+    description?: string;
+    id: string;
+    imageKey?: string;
+    imageUrl?: string;
+    name: string;
+    slug: string;
+}
+
 export interface ProductSkuResponseDto {
     id: string;
     imageKey?: string;
+    imageUrl?: string;
     isActive: boolean;
     name?: string;
     price?: string;
@@ -139,6 +151,7 @@ export interface ProductSummaryDto {
     categoryId: string;
     id: string;
     mainImageKey?: string;
+    mainImageUrl?: string;
     name: string;
     price: string;
     shopId: string;

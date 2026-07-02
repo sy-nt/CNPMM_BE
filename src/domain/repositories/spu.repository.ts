@@ -58,6 +58,7 @@ export class SpuRepository extends BaseRepository<SpuEntity> {
         return result.affected ?? 0;
     };
 
+    // eslint-disable-next-line max-lines-per-function
     findDetailWithRelations = async (
         idOrSlug: string,
         opts?: { onlyActive?: boolean },
@@ -93,6 +94,12 @@ export class SpuRepository extends BaseRepository<SpuEntity> {
                 "sku_attribute_values",
                 "sav",
                 "sav.sku_id = sku.id",
+            )
+            .leftJoinAndMapOne(
+                "spu.shop",
+                "shops",
+                "shop",
+                "shop.id = spu.shop_id",
             )
             .where("spu.id = :idOrSlug OR spu.slug = :idOrSlug", { idOrSlug });
 

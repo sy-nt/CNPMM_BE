@@ -150,6 +150,18 @@ export const myClaimsRequestQuerySchema = Joi.object({
     sort,
 });
 
+export const platformDiscountListQuerySchema = Joi.object({
+    discountType: Joi.string()
+        .valid(...Object.values(DiscountType))
+        .optional(),
+    limit,
+    orderBy: Joi.string()
+        .valid(...DISCOUNT_ORDER_BY_FIELDS)
+        .default(DISCOUNT_ORDER_BY_FIELDS_DEFAULT),
+    page,
+    sort,
+});
+
 export const updateDiscountRequestBodySchema = Joi.object({
     code: Joi.string().trim().min(1).max(64).uppercase().allow(null).optional(),
     description: Joi.string().max(1000).allow(null).optional(),

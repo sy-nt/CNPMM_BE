@@ -11,63 +11,80 @@ import {
     assignWorkerRequestSchema,
     createShopRequestSchema,
     getShopRequestParamsSchema,
+    unassignWorkerRequestSchema,
     updateShopRequestSchema,
-    updateShopStatusRequestSchema,
 } from "./shop.schema";
 
 const shopRouter = Router();
 
 shopRouter.post(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ body: createShopRequestSchema }),
     rbac([SHOP_PERMISSIONS.SHOP_REGISTER]),
     asyncWrapper(shopController.registerShop),
 );
 
+shopRouter.get(
+    "/workers",
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    rbac([SHOP_PERMISSIONS.SHOP_READ]),
+    asyncWrapper(shopController.getWorkers),
+);
+
 shopRouter.post(
     "/workers",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ body: assignWorkerRequestSchema }),
     rbac([SHOP_STAFF_PERMISSIONS.SHOP_STAFF_ASSIGN]),
     asyncWrapper(shopController.assignWorker),
 );
 
+shopRouter.delete(
+    "/workers",
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
+    authenticator("access"),
+    validator({ body: unassignWorkerRequestSchema }),
+    rbac([SHOP_STAFF_PERMISSIONS.SHOP_STAFF_UNASSIGN]),
+    asyncWrapper(shopController.unassignWorker),
+);
+
 shopRouter.put(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ body: updateShopRequestSchema }),
     rbac([SHOP_PERMISSIONS.SHOP_UPDATE]),
     asyncWrapper(shopController.updateShop),
 );
 
-shopRouter.patch(
-    "/status",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+shopRouter.get(
+    "/details/me",
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
-    validator({ body: updateShopStatusRequestSchema }),
-    rbac([SHOP_PERMISSIONS.SHOP_VERIFY]),
-    asyncWrapper(shopController.updateShopStatus),
+    rbac([SHOP_PERMISSIONS.SHOP_READ]),
+    asyncWrapper(shopController.getMyShopDetails),
+);
+
+shopRouter.get(
+    "/details/:idOrSlug",
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
+    authenticator("access-optional"),
+    validator({ params: getShopRequestParamsSchema }),
+    rbac([SHOP_PERMISSIONS.SHOP_READ]),
+    asyncWrapper(shopController.getShopDetails),
 );
 
 shopRouter.get(
     "/:idOrSlug",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access-optional"),
     validator({ params: getShopRequestParamsSchema }),
     rbac([SHOP_PERMISSIONS.SHOP_READ]),
     asyncWrapper(shopController.getShop),
 );
 
-shopRouter.get(
-    "/details/:idOrSlug",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
-    authenticator("access-optional"),
-    validator({ params: getShopRequestParamsSchema }),
-    rbac([SHOP_PERMISSIONS.SHOP_READ]),
-    asyncWrapper(shopController.getShopDetails),
-);
 export default shopRouter;

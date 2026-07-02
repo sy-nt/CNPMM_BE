@@ -1,4 +1,8 @@
 import {
+    loadImageUrlLookup,
+    resolveImageUrl,
+} from "@api/image/image.lifecycle";
+import {
     CartEntity,
     ShopEntity,
     ShopStatus,
@@ -24,6 +28,7 @@ import {
     CartResponseDto,
     GetCartRequestDto,
     RemoveItemRequestDto,
+    RemovePurchasedItemsRequestDto,
     UpdateItemRequestDto,
 } from "./cart.dto";
 import {
@@ -93,7 +98,8 @@ export class CartService extends BaseService {
         });
         const items = await this._loadCartItems(dto.userId, cart?.id);
         const enriched = await this._enrichItems(items);
-        return this._toCartResponse(dto.userId, enriched, cart);
+        const withImageUrls = await this._attachImageUrls(enriched);
+        return this._toCartResponse(dto.userId, withImageUrls, cart);
     }
 
     async removeItem(dto: RemoveItemRequestDto): Promise<CartResponseDto> {
@@ -115,6 +121,41 @@ export class CartService extends BaseService {
         await this.repositories.cartItem.delete({ id: existing.id });
         await this._cacheRemoveItem(dto.userId, dto.skuId);
         return this.getCart({ userId: dto.userId });
+    }
+
+    async removePurchasedItems(
+        dto: RemovePurchasedItemsRequestDto,
+    ): Promise<void> {
+        if (dto.items.length === 0) return;
+        const cart = await this.repositories.cart.findOne({
+            select: { id: true },
+            where: { userId: dto.userId },
+        });
+        if (!cart) return;
+        await this.repositories.cart.findOneByIdForUpdate(cart.id);
+        for (const item of dto.items) {
+            const existing = await this.repositories.cartItem.findOne({
+                select: { id: true, quantity: true },
+                where: { cartId: cart.id, skuId: item.skuId },
+            });
+            if (!existing) continue;
+            if (item.quantity >= existing.quantity) {
+                await this.repositories.cartItem.delete({ id: existing.id });
+                await this._cacheRemoveItem(dto.userId, item.skuId);
+                continue;
+            }
+            const remaining = existing.quantity - item.quantity;
+            await this.repositories.cartItem.update(
+                { id: existing.id },
+                { quantity: remaining },
+            );
+            await this._cacheUpsertItem(
+                dto.userId,
+                item.skuId,
+                existing.id,
+                remaining,
+            );
+        }
     }
 
     async updateItem(dto: UpdateItemRequestDto): Promise<CartResponseDto> {
@@ -181,6 +222,22 @@ export class CartService extends BaseService {
         if (!shop || shop.status !== ShopStatus.ACTIVE) {
             throw new BadRequestError(CartError.SHOP_NOT_AVAILABLE);
         }
+    }
+
+    private async _attachImageUrls(
+        items: EnrichedCartItem[],
+    ): Promise<EnrichedCartItem[]> {
+        const lookup = await loadImageUrlLookup(
+            this.repositories.image,
+            items.map((item) => item.sku.imageKey),
+        );
+        return items.map((item) => ({
+            ...item,
+            sku: {
+                ...item.sku,
+                imageUrl: resolveImageUrl(item.sku.imageKey, lookup),
+            },
+        }));
     }
 
     private _buildAvailableItem(
@@ -457,6 +514,8 @@ export class CartService extends BaseService {
             isAvailable: item.isAvailable,
             quantity: item.quantity,
             reason: item.reason,
+            shopId: item.sku.shop?.id,
+            shopName: item.sku.shop?.name,
             sku: item.sku,
             skuId: item.skuId,
             subtotal: item.subtotal,

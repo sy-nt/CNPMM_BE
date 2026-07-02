@@ -1,3 +1,4 @@
+import { CART_MAX_QUANTITY_PER_ITEM } from "@api/cart/cart.constants";
 import { OrderStatus } from "@domain/entities";
 import { limit, page, sort, uuid } from "@shared/schema";
 import Joi from "joi";
@@ -6,6 +7,15 @@ import {
     ORDER_ORDER_BY_FIELDS,
     ORDER_ORDER_BY_FIELDS_DEFAULT,
 } from "./order.constants";
+
+const checkoutItemSchema = Joi.object({
+    quantity: Joi.number()
+        .integer()
+        .min(1)
+        .max(CART_MAX_QUANTITY_PER_ITEM)
+        .optional(),
+    skuId: uuid.required(),
+});
 
 const decimalString = Joi.string()
     .pattern(/^\d{1,10}(\.\d{1,2})?$/)
@@ -34,6 +44,11 @@ export const checkoutPreviewRequestSchema = Joi.object({
     claimedDiscountIds: Joi.array().items(uuid.required()).unique().optional(),
     deliveryMethodId: uuid.required(),
     destinationAddressId: uuid.required(),
+    items: Joi.array()
+        .items(checkoutItemSchema)
+        .min(1)
+        .unique((a, b) => a.skuId === b.skuId)
+        .required(),
 });
 
 export const getOrdersRequestQuerySchema = Joi.object({
@@ -42,6 +57,7 @@ export const getOrdersRequestQuerySchema = Joi.object({
         .valid(...ORDER_ORDER_BY_FIELDS)
         .default(ORDER_ORDER_BY_FIELDS_DEFAULT),
     page,
+    shopId: uuid.optional(),
     sort,
     status: Joi.string()
         .valid(...Object.values(OrderStatus))
@@ -57,6 +73,11 @@ export const placeOrderRequestSchema = Joi.object({
     deliveryMethodId: uuid.required(),
     destinationAddressId: uuid.required(),
     expectedTotalAmount: decimalString.required(),
+    items: Joi.array()
+        .items(checkoutItemSchema)
+        .min(1)
+        .unique((a, b) => a.skuId === b.skuId)
+        .required(),
 });
 
 export const updateOrderStatusRequestBodySchema = Joi.object({

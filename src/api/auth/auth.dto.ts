@@ -39,7 +39,7 @@ export type ResetPasswordRequestDto = {
 export type SignUpRequestDto = {
     email: string;
     firstName?: string;
-    imageUrl?: string;
+    imageKey?: string;
     lastName?: string;
     password: string;
 };

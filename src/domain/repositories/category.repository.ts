@@ -6,8 +6,11 @@ export class CategoryRepository extends BaseRepository<CategoryEntity> {
         super(CategoryEntity);
     }
 
-    findSlugsByBase = async (baseSlug: string): Promise<string[]> => {
-        const rows = await this.repository
+    findSlugsByBase = async (
+        baseSlug: string,
+        shopId?: string,
+    ): Promise<string[]> => {
+        const qb = this.repository
             .createQueryBuilder("category")
             .select("category.slug", "slug")
             .where(
@@ -16,8 +19,15 @@ export class CategoryRepository extends BaseRepository<CategoryEntity> {
                     baseSlug,
                     slugPattern: `${baseSlug}-%`,
                 },
-            )
-            .getRawMany<{ slug: string }>();
+            );
+
+        if (shopId) {
+            qb.andWhere("category.shop_id = :shopId", { shopId });
+        } else {
+            qb.andWhere("category.shop_id IS NULL");
+        }
+
+        const rows = await qb.getRawMany<{ slug: string }>();
 
         return rows.map((row) => row.slug);
     };

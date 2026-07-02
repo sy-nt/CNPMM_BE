@@ -1,6 +1,8 @@
 import { buildModulePermissionsMap } from "@shared/utils/role";
 
 export enum DiscountError {
+    CALLER_USER_NOT_FOUND = "Your account no longer exists; please sign in again",
+    CLAIM_ALREADY_EXISTS = "You have already claimed this discount",
     CLAIM_FORBIDDEN = "You are not allowed to use this claim",
     CLAIM_NOT_CLAIMABLE = "Discount cannot be claimed (inactive, expired, or maxed out)",
     CLAIM_NOT_FOUND = "Claim not found",

@@ -28,7 +28,7 @@ authRouter.post(
     validator({
         body: signUpRequestSchema,
     }),
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     asyncWrapper(authController.signUp),
 );
 
@@ -48,7 +48,7 @@ authRouter.post(
     validator({
         body: activateAccountRequestSchema,
     }),
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     asyncWrapper(authController.activateAccount),
 );
 authRouter.post(
@@ -56,7 +56,7 @@ authRouter.post(
     validator({
         body: forgotPasswordRequestSchema,
     }),
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     asyncWrapper(authController.forgotPassword),
 );
 
@@ -65,7 +65,7 @@ authRouter.post(
     validator({
         body: resetPasswordRequestSchema,
     }),
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     asyncWrapper(authController.resetPassword),
 );
 

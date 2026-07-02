@@ -1,4 +1,8 @@
-import { InventoryEntity } from "@domain/entities";
+import {
+    loadImageUrlLookup,
+    resolveImageUrl,
+} from "@api/image/image.lifecycle";
+import { InventoryEntity, SkuEntity, SpuEntity } from "@domain/entities";
 import { BaseService } from "@shared/lib/base/service";
 import {
     BadRequestError,
@@ -13,7 +17,10 @@ import {
     GetInventoryBySkuRequestDto,
     GetInventoryByWarehouseRequestDto,
     GetInventoryByWarehouseResponseDto,
+    InventoryProductDto,
     InventoryRowDto,
+    InventorySkuDto,
+    InventoryWarehouseRowDto,
     SetInventoryRequestDto,
 } from "./inventory.dto";
 
@@ -63,9 +70,18 @@ export class InventoryService extends BaseService {
             { where: { warehouseId } },
             pagination,
         );
+        const skuIds = [...new Set(result.items.map((row) => row.skuId))];
+        const skus = await this.repositories.sku.findByIdsWithSpu(skuIds);
+        const skuById = new Map(skus.map((sku) => [sku.id, sku]));
+        const imageLookup = await loadImageUrlLookup(
+            this.repositories.image,
+            skus.flatMap((sku) => [sku.imageKey, sku.spu?.mainImageKey]),
+        );
         return {
             ...result,
-            items: result.items.map((row) => this._toRow(row)),
+            items: result.items.map((row) =>
+                this._toWarehouseRow(row, skuById, imageLookup),
+            ),
         };
     }
 
@@ -136,6 +152,24 @@ export class InventoryService extends BaseService {
         throw new ConflictError(InventoryError.INVENTORY_CONCURRENT_UPDATE);
     }
 
+    private _toProductDto(
+        product: SpuEntity,
+        imageLookup: Map<string, string>,
+    ): InventoryProductDto {
+        return {
+            categoryId: product.categoryId,
+            id: product.id,
+            isActive: product.isActive,
+            mainImageKey: product.mainImageKey,
+            mainImageUrl: resolveImageUrl(product.mainImageKey, imageLookup),
+            name: product.name,
+            price: product.price,
+            shopId: product.shopId,
+            slug: product.slug,
+            soldCount: product.soldCount,
+        };
+    }
+
     private _toRow(entity: InventoryEntity): InventoryRowDto {
         return {
             quantity: entity.quantity,
@@ -144,6 +178,38 @@ export class InventoryService extends BaseService {
             updatedAt: entity.updatedAt,
             version: entity.version,
             warehouseId: entity.warehouseId,
+        };
+    }
+
+    private _toSkuDto(
+        sku: SkuEntity,
+        imageLookup: Map<string, string>,
+    ): InventorySkuDto {
+        return {
+            id: sku.id,
+            imageKey: sku.imageKey,
+            imageUrl: resolveImageUrl(sku.imageKey, imageLookup),
+            isActive: sku.isActive,
+            name: sku.name,
+            price: sku.price,
+            skuCode: sku.skuCode,
+            spuId: sku.spuId,
+        };
+    }
+
+    private _toWarehouseRow(
+        entity: InventoryEntity,
+        skuById: Map<string, SkuEntity>,
+        imageLookup: Map<string, string>,
+    ): InventoryWarehouseRowDto {
+        const sku = skuById.get(entity.skuId);
+        if (!sku?.spu) {
+            throw new NotFoundError(InventoryError.SKU_NOT_FOUND);
+        }
+        return {
+            ...this._toRow(entity),
+            product: this._toProductDto(sku.spu, imageLookup),
+            sku: this._toSkuDto(sku, imageLookup),
         };
     }
 }

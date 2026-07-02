@@ -27,6 +27,7 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.10.1",
     "@types/nodemailer": "^8.0.0",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/parser": "^8.17.0",
     "eslint": "^9.16.0",
     "eslint-import-resolver-typescript": "^3.6.3",
@@ -88,6 +89,7 @@
     "typeorm": "^0.3.28",
     "uuid": "^13.0.0",
     "winston": "^3.17.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "ws": "^8.21.0"
   }
 }

@@ -1,3 +1,5 @@
+import { IMAGE_PREFIXES } from "@api/image/image.constants";
+import { claimImageKeys } from "@api/image/image.lifecycle";
 import { UserEntity } from "@domain/entities";
 import { GLOBAL_REDIS_KEY_PREFIX, REDIS_TRUTHY_VALUE } from "@shared/constants";
 import { BaseService } from "@shared/lib/base/service";
@@ -86,7 +88,7 @@ export class AuthService extends BaseService {
         if (!isPasswordValid) await this.handleInvalidCredentials(dto.email);
 
         return appJwt.generateTokens({
-            assignedShopId: user.assignedShopId,
+            assignedShopId: user.assignedShopId ?? undefined,
             roleId: user.roleId,
             userId: user.id,
         });
@@ -139,10 +141,23 @@ export class AuthService extends BaseService {
         if (!userRole) throw new BadRequestError(AuthError.ROLE_NOT_FOUND);
 
         const hashedPassword = await hashPassword(dto.password);
+        if (dto.imageKey) {
+            await claimImageKeys(
+                {
+                    image: this.repositories.image,
+                    shop: this.repositories.shop,
+                    sku: this.repositories.sku,
+                    spu: this.repositories.spu,
+                    user: this.repositories.user,
+                },
+                [dto.imageKey],
+                IMAGE_PREFIXES.USER_AVATAR,
+            );
+        }
         await this.repositories.user.create({
             email: dto.email,
             firstName: dto.firstName,
-            imageUrl: dto.imageUrl,
+            imageKey: dto.imageKey,
             lastName: dto.lastName,
             password: hashedPassword,
             roleId: userRole.id,

@@ -24,6 +24,14 @@ export class ShopEntity extends BaseEntityWithUUID {
 
     @Column({
         length: 255,
+        name: "image_key",
+        nullable: true,
+        type: "varchar",
+    })
+    imageKey?: string;
+
+    @Column({
+        length: 255,
         type: "varchar",
     })
     name!: string;

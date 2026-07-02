@@ -59,7 +59,7 @@ export class DiscountClaimRepository extends BaseRepository<DiscountClaimEntity>
     ): void {
         const sort: SortDirection = pagination.sort ?? "DESC";
         qb.orderBy(
-            "claim.created_at",
+            `claim.${this._mapOrderBy(pagination.orderBy)}`,
             sort.toString().toUpperCase() as "ASC" | "DESC",
         )
             .skip((pagination.page - 1) * pagination.limit)
@@ -71,17 +71,20 @@ export class DiscountClaimRepository extends BaseRepository<DiscountClaimEntity>
     ): SelectQueryBuilder<DiscountClaimEntity> {
         return this.repository
             .createQueryBuilder("claim")
-            .innerJoinAndMapOne(
-                "claim.discount",
-                "discounts",
-                "d",
-                "d.id = claim.discount_id AND d.deleted_at IS NULL",
-            )
+            .innerJoinAndSelect("claim.discount", "d")
             .where("claim.user_id = :userId", { userId })
             .andWhere("d.is_active = 1")
             .andWhere("(d.valid_from IS NULL OR d.valid_from <= NOW())")
             .andWhere("(d.valid_until IS NULL OR d.valid_until >= NOW())")
             .andWhere("(d.max_uses IS NULL OR d.used_count < d.max_uses)");
+    }
+
+    private _mapOrderBy(orderBy?: string): string {
+        switch (orderBy) {
+            case "createdAt":
+            default:
+                return "createdAt";
+        }
     }
 }
 

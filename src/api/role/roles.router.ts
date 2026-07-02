@@ -13,7 +13,7 @@ const rolesRouter = Router();
 
 rolesRouter.get(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         query: getRolesRequestQuerySchema,
@@ -24,7 +24,7 @@ rolesRouter.get(
 
 rolesRouter.get(
     "/permissions/system",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     rbac([ROLE_PERMISSIONS.ROLE_READ]),
     asyncWrapper(roleController.getPermissions),

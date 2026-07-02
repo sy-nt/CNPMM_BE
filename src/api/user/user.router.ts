@@ -20,7 +20,7 @@ userRouter.get(
 
 userRouter.patch(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         body: updateUserRequestSchema,
@@ -31,7 +31,7 @@ userRouter.patch(
 
 userRouter.delete(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     rbac([USER_PERMISSIONS.USER_DELETE]),
     asyncWrapper(userController.deleteUser),
@@ -39,7 +39,7 @@ userRouter.delete(
 
 userRouter.post(
     "/block",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     rbac([USER_PERMISSIONS.USER_BLOCK]),
     asyncWrapper(userController.blockUser),

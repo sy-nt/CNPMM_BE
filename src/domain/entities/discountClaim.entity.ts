@@ -1,4 +1,4 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
+import { Column, Entity, Index, JoinColumn, ManyToOne, Unique } from "typeorm";
 
 import { BaseEntityWithUUID } from "./base";
 import { DiscountEntity } from "./discount.entity";
@@ -8,7 +8,7 @@ import { UserEntity } from "./user.entity";
     name: "discount_claims",
 })
 @Index(["discountId"])
-@Index(["userId", "discountId"])
+@Unique(["userId", "discountId"])
 export class DiscountClaimEntity extends BaseEntityWithUUID {
     @JoinColumn({ name: "discount_id" })
     @ManyToOne(() => DiscountEntity, { nullable: false })

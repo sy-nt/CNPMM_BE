@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 import {
     DeliveryEntity,
     DeliveryMethodEntity,
@@ -12,25 +13,110 @@ import { AddressEntity } from "@domain/entities/address.entity";
 import { CartEntity } from "@domain/entities/cart.entity";
 import { CartItemEntity } from "@domain/entities/cartItem.entity";
 import { InventoryEntity } from "@domain/entities/inventory.entity";
+import { RBAC_SYSTEM_ROLES } from "@shared/lib/rbac/rbac.constants";
 import { EntityManager } from "typeorm";
 
-import { CUSTOMER_ADDRESS_TEMPLATES, CUSTOMER_FIXTURES } from "./fixtures";
+import {
+    CUSTOMER_ADDRESS_TEMPLATES,
+    CUSTOMER_FIXTURES,
+    SHOP_FIXTURES,
+} from "./fixtures";
 import { SeededSku } from "./product";
 import { SeededShop } from "./shop";
 import { SeededWarehouse } from "./warehouse";
 
 type CustomerEntry = { email: string; userId: string };
 
-const CART_CUSTOMERS_COUNT = 5;
-const ORDER_CUSTOMERS_COUNT = 3;
+const CART_CUSTOMERS_COUNT = 6;
 const ITEMS_PER_CART = 2;
 const ITEMS_PER_ORDER = 2;
+const DELIVERY_FEE = "25000.00";
+const ORDER_STATUS_OFFSET_HOURS = 6;
+
+interface OrderSeedSpec {
+    cancellationReason?: string;
+    cancelledFrom?: "confirmed" | "processing";
+    customerIndex: number;
+    shopSlug: string;
+    status: OrderStatus;
+}
+
+const ORDER_SEED_SPECS: OrderSeedSpec[] = [
+    {
+        customerIndex: 0,
+        shopSlug: "aurora-electronics",
+        status: OrderStatus.PENDING,
+    },
+    {
+        customerIndex: 1,
+        shopSlug: "mekong-threads",
+        status: OrderStatus.CONFIRMED,
+    },
+    {
+        customerIndex: 2,
+        shopSlug: "hanoi-hearth",
+        status: OrderStatus.PROCESSING,
+    },
+    {
+        customerIndex: 3,
+        shopSlug: "lotus-beauty",
+        status: OrderStatus.SHIPPED,
+    },
+    {
+        customerIndex: 4,
+        shopSlug: "annam-outdoors",
+        status: OrderStatus.DELIVERED,
+    },
+    {
+        customerIndex: 5,
+        shopSlug: "aurora-electronics",
+        status: OrderStatus.COMPLETED,
+    },
+    {
+        cancellationReason: "Customer changed mind before fulfillment.",
+        customerIndex: 6,
+        shopSlug: "mekong-threads",
+        status: OrderStatus.CANCELLED,
+    },
+    {
+        cancellationReason: "Out of stock after confirmation.",
+        cancelledFrom: "confirmed",
+        customerIndex: 7,
+        shopSlug: "hanoi-hearth",
+        status: OrderStatus.CANCELLED,
+    },
+    {
+        customerIndex: 8,
+        shopSlug: "lotus-beauty",
+        status: OrderStatus.COMPLETED,
+    },
+    {
+        customerIndex: 9,
+        shopSlug: "annam-outdoors",
+        status: OrderStatus.SHIPPED,
+    },
+];
 
 export interface SeedCartOrderInput {
     customerIdsByEmail: Map<string, string>;
     shopsBySlug: Map<string, SeededShop>;
     skusByShopId: Map<string, SeededSku[]>;
     warehousesByShopId: Map<string, SeededWarehouse[]>;
+}
+
+interface OrderFinancials {
+    deliveryFee: string;
+    itemsSubtotal: string;
+    totalAmount: string;
+}
+
+interface OrderStatusTimestamps {
+    cancelledAt?: Date;
+    completedAt?: Date;
+    confirmedAt?: Date;
+    deliveredAt?: Date;
+    processingAt?: Date;
+    shippedAt?: Date;
 }
 
 interface SeededAddressesResult {
@@ -61,6 +147,88 @@ export const seedCartsAndOrders = async (
     });
 };
 
+const _buildOrderStatusTimestamps = (
+    spec: OrderSeedSpec,
+    base: Date,
+): OrderStatusTimestamps => {
+    const { status } = spec;
+    const at = (hoursAgo: number) =>
+        new Date(base.getTime() - hoursAgo * 60 * 60 * 1000);
+    const timestamps: OrderStatusTimestamps = {};
+    if (status === OrderStatus.CANCELLED) {
+        if (spec.cancelledFrom) {
+            timestamps.confirmedAt = at(ORDER_STATUS_OFFSET_HOURS * 2);
+        }
+        if (spec.cancelledFrom === "processing") {
+            timestamps.processingAt = at(ORDER_STATUS_OFFSET_HOURS * 1.5);
+        }
+        timestamps.cancelledAt = at(ORDER_STATUS_OFFSET_HOURS);
+        return timestamps;
+    }
+    if (
+        [
+            OrderStatus.COMPLETED,
+            OrderStatus.CONFIRMED,
+            OrderStatus.DELIVERED,
+            OrderStatus.PROCESSING,
+            OrderStatus.SHIPPED,
+        ].includes(status)
+    ) {
+        timestamps.confirmedAt = at(ORDER_STATUS_OFFSET_HOURS * 5);
+    }
+    if (
+        [
+            OrderStatus.COMPLETED,
+            OrderStatus.DELIVERED,
+            OrderStatus.PROCESSING,
+            OrderStatus.SHIPPED,
+        ].includes(status)
+    ) {
+        timestamps.processingAt = at(ORDER_STATUS_OFFSET_HOURS * 4);
+    }
+    if (
+        [
+            OrderStatus.COMPLETED,
+            OrderStatus.DELIVERED,
+            OrderStatus.SHIPPED,
+        ].includes(status)
+    ) {
+        timestamps.shippedAt = at(ORDER_STATUS_OFFSET_HOURS * 3);
+    }
+    if ([OrderStatus.COMPLETED, OrderStatus.DELIVERED].includes(status)) {
+        timestamps.deliveredAt = at(ORDER_STATUS_OFFSET_HOURS * 2);
+    }
+    if (status === OrderStatus.COMPLETED) {
+        timestamps.completedAt = at(ORDER_STATUS_OFFSET_HOURS);
+    }
+    return timestamps;
+};
+
+const _computeOrderFinancials = (items: SeededSku[]): OrderFinancials => {
+    const itemsSubtotal = items
+        .reduce((acc, sku) => acc + Number(sku.price) * ITEMS_PER_ORDER, 0)
+        .toFixed(2);
+    const totalAmount = (Number(itemsSubtotal) + Number(DELIVERY_FEE)).toFixed(
+        2,
+    );
+    return { deliveryFee: DELIVERY_FEE, itemsSubtotal, totalAmount };
+};
+
+const _decrementInventoryForOrder = async (
+    manager: EntityManager,
+    items: SeededSku[],
+    warehouseId: string,
+): Promise<void> => {
+    const inventoryRepository = manager.getRepository(InventoryEntity);
+    for (const sku of items) {
+        await inventoryRepository.decrement(
+            { skuId: sku.id, warehouseId },
+            "quantity",
+            ITEMS_PER_ORDER,
+        );
+    }
+};
+
 const _findDefaultDeliveryMethod = async (
     manager: EntityManager,
 ): Promise<DeliveryMethodEntity | null> => {
@@ -79,41 +247,78 @@ const _flattenSkuPool = (
     return all;
 };
 
-interface OrderFinancials {
-    deliveryFee: string;
-    itemsSubtotal: string;
-    totalAmount: string;
-}
-
-const DELIVERY_FEE = "25000.00";
-
-const _computeOrderFinancials = (items: SeededSku[]): OrderFinancials => {
-    const itemsSubtotal = items
-        .reduce((acc, sku) => acc + Number(sku.price) * ITEMS_PER_ORDER, 0)
-        .toFixed(2);
-    const totalAmount = (Number(itemsSubtotal) + Number(DELIVERY_FEE)).toFixed(
-        2,
-    );
-    return { deliveryFee: DELIVERY_FEE, itemsSubtotal, totalAmount };
+const _mapOrderToDeliveryStatus = (
+    status: OrderStatus,
+): DeliveryStatus | null => {
+    if (status === OrderStatus.CANCELLED) return DeliveryStatus.CANCELLED;
+    if (status === OrderStatus.SHIPPED) return DeliveryStatus.IN_TRANSIT;
+    if (status === OrderStatus.COMPLETED || status === OrderStatus.DELIVERED) {
+        return DeliveryStatus.DELIVERED;
+    }
+    if (status === OrderStatus.PENDING) return null;
+    return DeliveryStatus.PENDING;
 };
 
-const _persistCompletedOrder = async (
+const _persistDelivery = async (
+    manager: EntityManager,
+    args: {
+        addressId: string;
+        deliveryMethod: DeliveryMethodEntity;
+        fee: string;
+        orderId: string;
+        originAddressId: string;
+        status: DeliveryStatus;
+    },
+): Promise<DeliveryEntity> => {
+    const deliveryRepository = manager.getRepository(DeliveryEntity);
+    return deliveryRepository.save(
+        deliveryRepository.create({
+            deliveryMethodId: args.deliveryMethod.id,
+            destinationAddressId: args.addressId,
+            etaMaxDays: args.deliveryMethod.etaMaxDays,
+            etaMinDays: args.deliveryMethod.etaMinDays,
+            fee: args.fee,
+            notes: "Seeded order delivery",
+            orderId: args.orderId,
+            originAddressId: args.originAddressId,
+            providerCode: args.deliveryMethod.providerCode ?? "zone-table",
+            status: args.status,
+            trackingCode: `SEED-${args.orderId.slice(0, 8).toUpperCase()}`,
+            zoneCode: "SAME_CITY",
+        }),
+    );
+};
+
+const _persistOrder = async (
     manager: EntityManager,
     args: {
         addressId: string;
         addressRow: AddressEntity;
         financials: OrderFinancials;
         shop: SeededShop;
+        spec: OrderSeedSpec;
         userId: string;
     },
 ): Promise<OrderEntity> => {
     const now = new Date();
+    const timestamps = _buildOrderStatusTimestamps(args.spec, now);
+    const paymentStatus =
+        args.spec.status === OrderStatus.COMPLETED
+            ? PaymentStatus.PAID
+            : PaymentStatus.UNPAID;
     const orderRepository = manager.getRepository(OrderEntity);
     return orderRepository.save(
         orderRepository.create({
-            completedAt: now,
-            confirmedAt: now,
-            deliveredAt: now,
+            ...timestamps,
+            cancellationReason: args.spec.cancellationReason,
+            cancelledByRoleName:
+                args.spec.status === OrderStatus.CANCELLED
+                    ? RBAC_SYSTEM_ROLES.USER
+                    : undefined,
+            cancelledByUserId:
+                args.spec.status === OrderStatus.CANCELLED
+                    ? args.userId
+                    : undefined,
             deliveryFee: args.financials.deliveryFee,
             destinationAddressId: args.addressId,
             destinationAddressSnapshot: {
@@ -128,18 +333,16 @@ const _persistCompletedOrder = async (
             },
             itemsSubtotal: args.financials.itemsSubtotal,
             paymentMethod: PaymentMethod.COD,
-            paymentStatus: PaymentStatus.PAID,
-            processingAt: now,
-            shippedAt: now,
+            paymentStatus,
             shopId: args.shop.shopId,
-            status: OrderStatus.COMPLETED,
+            status: args.spec.status,
             totalAmount: args.financials.totalAmount,
             userId: args.userId,
         }),
     );
 };
 
-const _persistOrderForCustomer = async (
+const _persistOrderForSpec = async (
     manager: EntityManager,
     args: {
         addressId: string;
@@ -148,75 +351,41 @@ const _persistOrderForCustomer = async (
         items: SeededSku[];
         originAddressId: string;
         shop: SeededShop;
+        spec: OrderSeedSpec;
         userId: string;
         warehouseId: string;
     },
 ): Promise<void> => {
     const financials = _computeOrderFinancials(args.items);
-    const order = await _persistCompletedOrder(manager, {
-        ...args,
-        financials,
-    });
+    const order = await _persistOrder(manager, { ...args, financials });
     await _persistOrderItems(manager, {
         items: args.items,
         orderId: order.id,
         warehouseId: args.warehouseId,
     });
-    const delivery = await _persistDelivery(manager, {
-        addressId: args.addressId,
-        deliveryMethod: args.deliveryMethod,
-        fee: financials.deliveryFee,
-        orderId: order.id,
-        originAddressId: args.originAddressId,
-    });
-    await manager
-        .getRepository(OrderEntity)
-        .update({ id: order.id }, { deliveryId: delivery.id });
-    await _decrementInventoryForOrder(manager, args.items, args.warehouseId);
-};
 
-const _decrementInventoryForOrder = async (
-    manager: EntityManager,
-    items: SeededSku[],
-    warehouseId: string,
-): Promise<void> => {
-    const inventoryRepository = manager.getRepository(InventoryEntity);
-    for (const sku of items) {
-        await inventoryRepository.decrement(
-            { skuId: sku.id, warehouseId },
-            "quantity",
-            ITEMS_PER_ORDER,
+    const deliveryStatus = _mapOrderToDeliveryStatus(args.spec.status);
+    if (deliveryStatus) {
+        const delivery = await _persistDelivery(manager, {
+            addressId: args.addressId,
+            deliveryMethod: args.deliveryMethod,
+            fee: financials.deliveryFee,
+            orderId: order.id,
+            originAddressId: args.originAddressId,
+            status: deliveryStatus,
+        });
+        await manager
+            .getRepository(OrderEntity)
+            .update({ id: order.id }, { deliveryId: delivery.id });
+    }
+
+    if (_shouldDecrementInventory(args.spec.status)) {
+        await _decrementInventoryForOrder(
+            manager,
+            args.items,
+            args.warehouseId,
         );
     }
-};
-
-const _persistDelivery = async (
-    manager: EntityManager,
-    args: {
-        addressId: string;
-        deliveryMethod: DeliveryMethodEntity;
-        fee: string;
-        orderId: string;
-        originAddressId: string;
-    },
-): Promise<DeliveryEntity> => {
-    const deliveryRepository = manager.getRepository(DeliveryEntity);
-    return deliveryRepository.save(
-        deliveryRepository.create({
-            deliveryMethodId: args.deliveryMethod.id,
-            destinationAddressId: args.addressId,
-            etaMaxDays: args.deliveryMethod.etaMaxDays,
-            etaMinDays: args.deliveryMethod.etaMinDays,
-            fee: args.fee,
-            notes: "Seeded historical delivery",
-            orderId: args.orderId,
-            originAddressId: args.originAddressId,
-            providerCode: args.deliveryMethod.providerCode ?? "zone-table",
-            status: DeliveryStatus.DELIVERED,
-            trackingCode: `SEED-${args.orderId.slice(0, 8).toUpperCase()}`,
-            zoneCode: "SAME_CITY",
-        }),
-    );
 };
 
 const _persistOrderItems = async (
@@ -240,8 +409,9 @@ const _persistOrderItems = async (
     await orderItemRepository.save(orderItemRepository.create(rows));
 };
 
-const _pickFirstShopWithSkus = (input: {
+const _pickShopContext = (input: {
     shopsBySlug: Map<string, SeededShop>;
+    shopSlug: string;
     skusByShopId: Map<string, SeededSku[]>;
     warehousesByShopId: Map<string, SeededWarehouse[]>;
 }): {
@@ -250,25 +420,20 @@ const _pickFirstShopWithSkus = (input: {
     skus: SeededSku[];
     warehouseId: string;
 } | null => {
-    for (const shop of input.shopsBySlug.values()) {
-        const skus = input.skusByShopId.get(shop.shopId);
-        const warehouses = input.warehousesByShopId.get(shop.shopId);
-        if (
-            !skus ||
-            skus.length === 0 ||
-            !warehouses ||
-            warehouses.length === 0
-        )
-            continue;
-        const warehouse = warehouses[0];
-        return {
-            originAddressId: warehouse.addressId,
-            shop,
-            skus,
-            warehouseId: warehouse.id,
-        };
+    const shop = input.shopsBySlug.get(input.shopSlug);
+    if (!shop) return null;
+    const skus = input.skusByShopId.get(shop.shopId);
+    const warehouses = input.warehousesByShopId.get(shop.shopId);
+    if (!skus || skus.length === 0 || !warehouses || warehouses.length === 0) {
+        return null;
     }
-    return null;
+    const warehouse = warehouses[0];
+    return {
+        originAddressId: warehouse.addressId,
+        shop,
+        skus,
+        warehouseId: warehouse.id,
+    };
 };
 
 const _resolveCustomers = (
@@ -338,35 +503,53 @@ const _seedOrders = async (
         warehousesByShopId: Map<string, SeededWarehouse[]>;
     },
 ): Promise<void> => {
-    const picked = _pickFirstShopWithSkus({
-        shopsBySlug: args.shopsBySlug,
-        skusByShopId: args.skusByShopId,
-        warehousesByShopId: args.warehousesByShopId,
-    });
-    if (!picked) return;
     const addressRepository = manager.getRepository(AddressEntity);
-    const targets = args.customers.slice(0, ORDER_CUSTOMERS_COUNT);
-    for (const [idx, customer] of targets.entries()) {
+    const shopSlugs = SHOP_FIXTURES.map((shop) => shop.slug);
+
+    for (const [specIdx, spec] of ORDER_SEED_SPECS.entries()) {
+        const customer = args.customers[spec.customerIndex];
+        if (!customer) continue;
+
+        const picked = _pickShopContext({
+            shopsBySlug: args.shopsBySlug,
+            shopSlug: spec.shopSlug,
+            skusByShopId: args.skusByShopId,
+            warehousesByShopId: args.warehousesByShopId,
+        });
+        if (!picked) continue;
+
         const addressId = args.addresses.addressByCustomer.get(customer.userId);
         if (!addressId) continue;
+
         const addressRow = await addressRepository.findOne({
             where: { id: addressId },
         });
         if (!addressRow) continue;
-        const itemSlice = picked.skus.slice(
-            idx * ITEMS_PER_ORDER,
-            idx * ITEMS_PER_ORDER + ITEMS_PER_ORDER,
-        );
-        if (itemSlice.length === 0) continue;
-        await _persistOrderForCustomer(manager, {
+
+        const offset =
+            (specIdx * ITEMS_PER_ORDER + shopSlugs.indexOf(spec.shopSlug)) %
+            Math.max(1, picked.skus.length - ITEMS_PER_ORDER + 1);
+        const items = picked.skus.slice(offset, offset + ITEMS_PER_ORDER);
+        if (items.length < ITEMS_PER_ORDER) continue;
+
+        await _persistOrderForSpec(manager, {
             addressId,
             addressRow,
             deliveryMethod: args.deliveryMethod,
-            items: itemSlice,
+            items,
             originAddressId: picked.originAddressId,
             shop: picked.shop,
+            spec,
             userId: customer.userId,
             warehouseId: picked.warehouseId,
         });
     }
 };
+
+const _shouldDecrementInventory = (status: OrderStatus): boolean =>
+    [
+        OrderStatus.COMPLETED,
+        OrderStatus.DELIVERED,
+        OrderStatus.PROCESSING,
+        OrderStatus.SHIPPED,
+    ].includes(status);

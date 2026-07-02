@@ -1,5 +1,9 @@
-import { limit, sort } from "@shared/schema";
+import { email, limit, sort } from "@shared/schema";
 import Joi from "joi";
+
+export const assignModeratorRequestSchema = Joi.object({
+    email: email.required(),
+});
 
 export const getUsersRequestSchema = Joi.object({
     lastId: Joi.string().uuid().optional(),
@@ -13,7 +17,7 @@ export const userIdParamsSchema = Joi.object({
 
 export const updateUserRequestSchema = Joi.object({
     firstName: Joi.string().optional(),
-    imageUrl: Joi.string().optional(),
+    imageKey: Joi.string().trim().min(1).max(255).optional(),
     lastName: Joi.string().optional(),
     password: Joi.string().optional(),
 }).min(1);

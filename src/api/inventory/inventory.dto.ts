@@ -19,7 +19,20 @@ export type GetInventoryByWarehouseRequestDto = {
 } & DefaultPaginationDto;
 
 export type GetInventoryByWarehouseResponseDto =
-    DefaultPaginationResponse<InventoryRowDto>;
+    DefaultPaginationResponse<InventoryWarehouseRowDto>;
+
+export interface InventoryProductDto {
+    categoryId: string;
+    id: string;
+    isActive: boolean;
+    mainImageKey?: string;
+    mainImageUrl?: string;
+    name: string;
+    price: string;
+    shopId: string;
+    slug: string;
+    soldCount: number;
+}
 
 export interface InventoryRowDto {
     quantity: number;
@@ -28,6 +41,22 @@ export interface InventoryRowDto {
     updatedAt: Date;
     version: number;
     warehouseId: string;
+}
+
+export interface InventorySkuDto {
+    id: string;
+    imageKey?: string;
+    imageUrl?: string;
+    isActive: boolean;
+    name?: string;
+    price?: string;
+    skuCode: string;
+    spuId: string;
+}
+
+export interface InventoryWarehouseRowDto extends InventoryRowDto {
+    product: InventoryProductDto;
+    sku: InventorySkuDto;
 }
 
 export interface SetInventoryRequestDto {

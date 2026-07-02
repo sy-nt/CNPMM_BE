@@ -1,7 +1,15 @@
+import { IMAGE_PREFIXES } from "@api/image/image.constants";
+import {
+    claimImageKeys,
+    loadImageUrlLookup,
+    releaseImageKeysIfOrphaned,
+    resolveImageUrl,
+} from "@api/image/image.lifecycle";
 import {
     CategoryEntity,
     ProductAttributeEntity,
     ProductAttributeValueEntity,
+    ShopEntity,
     SkuEntity,
     SpuEntity,
 } from "@domain/entities";
@@ -33,6 +41,7 @@ import {
     ProductAttributeValueResponseDto,
     ProductCategoryDto,
     ProductDetailDto,
+    ProductShopDto,
     ProductSkuResponseDto,
     ProductSummaryDto,
     SetSkuInventoryRequestDto,
@@ -80,6 +89,11 @@ export class ProductService extends BaseService {
         await this._getSpuOrThrow(dto.productId, dto.shopId);
         await this._ensureSkuCodeAvailable(dto.skuCode);
         await this._validateSkuSelectionsForSpu(dto.productId, dto.selections);
+        await claimImageKeys(
+            this._imageRepositories(),
+            [dto.imageKey],
+            IMAGE_PREFIXES.PRODUCT_IMAGE,
+        );
         const sku = await this.repositories.sku.create({
             imageKey: dto.imageKey,
             isActive: dto.isActive ?? true,
@@ -98,7 +112,10 @@ export class ProductService extends BaseService {
         const selections = await this.repositories.skuAttributeValue.findBySku(
             sku.id,
         );
-        return this._toSkuResponse(sku, selections);
+        const imageLookup = await loadImageUrlLookup(this.repositories.image, [
+            sku.imageKey,
+        ]);
+        return this._toSkuResponse(sku, selections, 0, imageLookup);
     }
 
     async createProduct(
@@ -106,6 +123,11 @@ export class ProductService extends BaseService {
     ): Promise<ProductDetailDto> {
         await this._assertCategoryExists(dto.categoryId);
         await this._ensureSkuCodesAvailable(dto.skus.map((s) => s.skuCode));
+        await claimImageKeys(
+            this._imageRepositories(),
+            [dto.mainImageKey, ...dto.skus.map((sku) => sku.imageKey)],
+            IMAGE_PREFIXES.PRODUCT_IMAGE,
+        );
         const slug = await this._generateUniqueSlug(dto.shopId, dto.name);
         const spu = await this._persistSpu(dto, slug);
         const attributeMap = await this._persistAttributes(
@@ -143,6 +165,14 @@ export class ProductService extends BaseService {
 
     async deleteProduct(dto: DeleteProductRequestDto): Promise<void> {
         const spu = await this._getSpuOrThrow(dto.id, dto.shopId);
+        const skus = await this.repositories.sku.find({
+            select: { imageKey: true },
+            where: { spuId: spu.id },
+        });
+        const imageKeys = [
+            spu.mainImageKey,
+            ...skus.map((sku) => sku.imageKey),
+        ];
         const attributes = await this.repositories.productAttribute.findBySpu(
             spu.id,
         );
@@ -156,11 +186,15 @@ export class ProductService extends BaseService {
             });
         }
         await this.repositories.spu.softDelete({ id: spu.id });
+        await releaseImageKeysIfOrphaned(this._imageRepositories(), imageKeys);
     }
 
     async deleteSku(dto: DeleteSkuRequestDto): Promise<void> {
         const sku = await this._getSkuOrThrow(dto.id, dto.shopId);
         await this.repositories.sku.softDelete({ id: sku.id });
+        await releaseImageKeysIfOrphaned(this._imageRepositories(), [
+            sku.imageKey,
+        ]);
     }
 
     async getProduct(dto: GetProductRequestDto): Promise<ProductDetailDto> {
@@ -168,10 +202,16 @@ export class ProductService extends BaseService {
             dto.idOrSlug,
         )) as null | SpuWithRelations;
         if (!spu) throw new NotFoundError(ProductError.PRODUCT_NOT_FOUND);
+        if (!spu.shop) throw new NotFoundError(ProductError.PRODUCT_NOT_FOUND);
         const skuIds = (spu.skus ?? []).map((sku) => sku.id);
         const quantityBySkuId =
             await this.repositories.inventory.findAvailableTotals(skuIds);
-        return this._toProductDetail(spu, quantityBySkuId);
+        const imageLookup = await loadImageUrlLookup(this.repositories.image, [
+            spu.mainImageKey,
+            spu.shop?.imageKey,
+            ...(spu.skus ?? []).map((sku) => sku.imageKey),
+        ]);
+        return this._toProductDetail(spu, quantityBySkuId, imageLookup);
     }
 
     async getProducts(
@@ -188,6 +228,10 @@ export class ProductService extends BaseService {
             },
             pagination,
         );
+        const imageLookup = await loadImageUrlLookup(
+            this.repositories.image,
+            result.items.map((row) => row.mainImageKey ?? undefined),
+        );
         return {
             ...result,
             items: result.items.map(
@@ -195,6 +239,10 @@ export class ProductService extends BaseService {
                     categoryId: row.categoryId,
                     id: row.id,
                     mainImageKey: row.mainImageKey ?? undefined,
+                    mainImageUrl: resolveImageUrl(
+                        row.mainImageKey ?? undefined,
+                        imageLookup,
+                    ),
                     name: row.name,
                     price: row.price,
                     shopId: row.shopId,
@@ -265,8 +313,16 @@ export class ProductService extends BaseService {
         dto: UpdateProductRequestDto,
     ): Promise<ProductDetailDto> {
         const spu = await this._getSpuOrThrow(dto.id, dto.shopId);
+        const previousMainImageKey = spu.mainImageKey;
         if (dto.categoryId && dto.categoryId !== spu.categoryId) {
             await this._assertCategoryExists(dto.categoryId);
+        }
+        if (dto.mainImageKey && dto.mainImageKey !== previousMainImageKey) {
+            await claimImageKeys(
+                this._imageRepositories(),
+                [dto.mainImageKey],
+                IMAGE_PREFIXES.PRODUCT_IMAGE,
+            );
         }
         const { id: _id, shopId: _shopId, ...rest } = dto;
         Object.assign(spu, removeNil(rest));
@@ -276,11 +332,17 @@ export class ProductService extends BaseService {
             this._rethrowIfOptimisticLock(error);
             throw error;
         }
+        if (dto.mainImageKey && dto.mainImageKey !== previousMainImageKey) {
+            await releaseImageKeysIfOrphaned(this._imageRepositories(), [
+                previousMainImageKey,
+            ]);
+        }
         return this.getProduct({ idOrSlug: spu.id });
     }
 
     async updateSku(dto: UpdateSkuRequestDto): Promise<ProductSkuResponseDto> {
         const sku = await this._getSkuOrThrow(dto.id, dto.shopId);
+        const previousImageKey = sku.imageKey;
         if (dto.skuCode && dto.skuCode !== sku.skuCode) {
             await this._ensureSkuCodeAvailable(dto.skuCode);
         }
@@ -290,6 +352,13 @@ export class ProductService extends BaseService {
         ) {
             throw new ConflictError(ProductError.PRODUCT_CONCURRENT_UPDATE);
         }
+        if (dto.imageKey && dto.imageKey !== previousImageKey) {
+            await claimImageKeys(
+                this._imageRepositories(),
+                [dto.imageKey],
+                IMAGE_PREFIXES.PRODUCT_IMAGE,
+            );
+        }
         const { expectedVersion: _ev, id: _id, shopId: _shopId, ...rest } = dto;
         Object.assign(sku, removeNil(rest));
         try {
@@ -298,14 +367,21 @@ export class ProductService extends BaseService {
             this._rethrowIfOptimisticLock(error);
             throw error;
         }
-        const [selections, quantityBySkuId] = await Promise.all([
+        if (dto.imageKey && dto.imageKey !== previousImageKey) {
+            await releaseImageKeysIfOrphaned(this._imageRepositories(), [
+                previousImageKey,
+            ]);
+        }
+        const [selections, quantityBySkuId, imageLookup] = await Promise.all([
             this.repositories.skuAttributeValue.findBySku(sku.id),
             this.repositories.inventory.findAvailableTotals([sku.id]),
+            loadImageUrlLookup(this.repositories.image, [sku.imageKey]),
         ]);
         return this._toSkuResponse(
             sku,
             selections,
             quantityBySkuId.get(sku.id) ?? 0,
+            imageLookup,
         );
     }
 
@@ -424,6 +500,16 @@ export class ProductService extends BaseService {
             throw new ForbiddenError(ProductError.PRODUCT_NOT_OWNED);
         }
         return spu;
+    }
+
+    private _imageRepositories() {
+        return {
+            image: this.repositories.image,
+            shop: this.repositories.shop,
+            sku: this.repositories.sku,
+            spu: this.repositories.spu,
+            user: this.repositories.user,
+        };
     }
 
     private async _persistAttributes(
@@ -565,6 +651,7 @@ export class ProductService extends BaseService {
     private _toProductDetail(
         spu: SpuWithRelations,
         quantityBySkuId: Map<string, number>,
+        imageLookup: Map<string, string>,
     ): ProductDetailDto {
         return {
             attributes: (spu.attributes ?? []).map((attr) =>
@@ -576,8 +663,10 @@ export class ProductService extends BaseService {
             id: spu.id,
             isActive: spu.isActive,
             mainImageKey: spu.mainImageKey,
+            mainImageUrl: resolveImageUrl(spu.mainImageKey, imageLookup),
             name: spu.name,
             price: spu.price,
+            shop: this._toProductShop(spu.shop, imageLookup),
             shopId: spu.shopId,
             skus: (spu.skus ?? []).map((sku) =>
                 this._toSkuResponse(
@@ -588,6 +677,7 @@ export class ProductService extends BaseService {
                         skuId: sku.id,
                     })),
                     quantityBySkuId.get(sku.id) ?? 0,
+                    imageLookup,
                 ),
             ),
             slug: spu.slug,
@@ -596,14 +686,30 @@ export class ProductService extends BaseService {
         };
     }
 
+    private _toProductShop(
+        shop: ShopEntity,
+        imageLookup: Map<string, string>,
+    ): ProductShopDto {
+        return {
+            description: shop.description,
+            id: shop.id,
+            imageKey: shop.imageKey,
+            imageUrl: resolveImageUrl(shop.imageKey, imageLookup),
+            name: shop.name,
+            slug: shop.slug,
+        };
+    }
+
     private _toSkuResponse(
         sku: SkuEntity,
         selections: Array<{ attributeId: string; attributeValueId: string }>,
         quantity = 0,
+        imageLookup: Map<string, string> = new Map(),
     ): ProductSkuResponseDto {
         return {
             id: sku.id,
             imageKey: sku.imageKey,
+            imageUrl: resolveImageUrl(sku.imageKey, imageLookup),
             isActive: sku.isActive,
             name: sku.name,
             price: sku.price,

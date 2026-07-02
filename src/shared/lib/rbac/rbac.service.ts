@@ -52,12 +52,23 @@ export class RbacService extends BaseService {
     }
 
     async isAdmin(roleId?: string): Promise<boolean> {
+        return this.isSystemRole(roleId, RBAC_SYSTEM_ROLES.ADMIN);
+    }
+
+    async isDeliveryAgent(roleId?: string): Promise<boolean> {
+        return this.isSystemRole(roleId, RBAC_SYSTEM_ROLES.DELIVERY_AGENT);
+    }
+
+    async isSystemRole(
+        roleId: string | undefined,
+        roleName: (typeof RBAC_SYSTEM_ROLES)[keyof typeof RBAC_SYSTEM_ROLES],
+    ): Promise<boolean> {
         if (!roleId) return false;
         const role = await this.repositories.role.findOne({
             select: { name: true },
             where: { id: roleId },
         });
-        return role?.name === RBAC_SYSTEM_ROLES.ADMIN;
+        return role?.name === roleName;
     }
 }
 

@@ -19,7 +19,7 @@ const warehouseRouter = Router();
 
 warehouseRouter.post(
     "/",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ body: createWarehouseRequestSchema }),
     rbac([WAREHOUSE_PERMISSIONS.WAREHOUSE_CREATE]),
@@ -28,7 +28,7 @@ warehouseRouter.post(
 
 warehouseRouter.put(
     "/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({
         body: updateWarehouseRequestBodySchema,
@@ -40,7 +40,7 @@ warehouseRouter.put(
 
 warehouseRouter.delete(
     "/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ params: deleteWarehouseRequestParamsSchema }),
     rbac([WAREHOUSE_PERMISSIONS.WAREHOUSE_DELETE]),
@@ -49,7 +49,7 @@ warehouseRouter.delete(
 
 warehouseRouter.get(
     "/:id",
-    rateLimit({ limit: 5, scope: "route", windowSeconds: 60 }),
+    rateLimit({ limit: 50, scope: "route", windowSeconds: 60 }),
     authenticator("access"),
     validator({ params: getWarehouseRequestParamsSchema }),
     rbac([WAREHOUSE_PERMISSIONS.WAREHOUSE_READ]),

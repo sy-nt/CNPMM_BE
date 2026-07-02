@@ -10,7 +10,7 @@ import { EntityTarget, ObjectLiteral } from "typeorm";
 import { seedCartsAndOrders } from "./cartOrder";
 import { seedCategories } from "./category";
 import { seedDeliveryCatalog } from "./delivery";
-import { seedShopDiscounts } from "./discount";
+import { seedDiscounts } from "./discount";
 import { seedPermissions } from "./permission";
 import { seedProducts } from "./product";
 import { seedRoles } from "./role";
@@ -38,7 +38,7 @@ const seedDemoData = async () => {
             shopsBySlug,
             warehousesByShopId,
         );
-        await seedShopDiscounts(manager, shopsBySlug);
+        await seedDiscounts(manager, shopsBySlug);
         await seedCartsAndOrders(manager, {
             customerIdsByEmail: users.customerIdsByEmail,
             shopsBySlug,
